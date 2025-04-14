@@ -1,11 +1,21 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+
+import { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 const Index = () => {
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    // Redirect to login page
+    navigate('/login');
+  }, [navigate]);
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
+    <div className="min-h-screen flex items-center justify-center bg-gray-100 dark:bg-gray-900">
       <div className="text-center">
-        <h1 className="text-4xl font-bold mb-4">Welcome to Your Blank App</h1>
-        <p className="text-xl text-gray-600">Start building your amazing project here!</p>
+        <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-spyder-teal mb-4"></div>
+        <h1 className="text-2xl font-bold mb-2">Redirecting to Spyder Config Central</h1>
+        <p className="text-gray-600 dark:text-gray-400">Please wait...</p>
       </div>
     </div>
   );
