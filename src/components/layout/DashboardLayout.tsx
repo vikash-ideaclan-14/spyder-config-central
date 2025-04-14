@@ -1,11 +1,9 @@
 
 import React, { useState } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { 
   Settings, 
   LayoutDashboard, 
-  Users, 
-  LogOut, 
   Menu, 
   X, 
   SunMoon, 
@@ -17,7 +15,6 @@ import {
 
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useApp } from '@/context/AppContext';
 
 type NavLinkProps = {
@@ -46,9 +43,8 @@ type DashboardLayoutProps = {
 };
 
 const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
-  const { user, logout, isDarkMode, toggleDarkMode } = useApp();
+  const { isDarkMode, toggleDarkMode } = useApp();
   const location = useLocation();
-  const navigate = useNavigate();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const navLinks = [
@@ -58,11 +54,6 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
     { path: '/batches', label: 'Spyder Batches', icon: <Layers size={20} /> },
     { path: '/settings', label: 'Settings', icon: <Settings size={20} /> },
   ];
-
-  const handleLogout = () => {
-    logout();
-    navigate('/login');
-  };
 
   return (
     <div className="flex min-h-screen bg-spyder-light-gray dark:bg-gray-900">
@@ -85,17 +76,6 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
         </div>
 
         <div className="p-4 border-t border-spyder-dark-blue/50">
-          <div className="flex items-center gap-3 mb-4">
-            <Avatar>
-              <AvatarImage src={`https://api.dicebear.com/7.x/initials/svg?seed=${user?.name || 'Guest'}`} />
-              <AvatarFallback>{user?.name?.[0] || 'G'}</AvatarFallback>
-            </Avatar>
-            <div>
-              <p className="text-sm font-medium text-white">{user?.name || 'Guest'}</p>
-              <p className="text-xs text-gray-400">{user?.email || ''}</p>
-            </div>
-          </div>
-          
           <div className="flex flex-col gap-2">
             <Button 
               variant="ghost" 
@@ -104,15 +84,6 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
             >
               {isDarkMode ? <SunMoon size={20} /> : <Moon size={20} />}
               <span className="ml-3">{isDarkMode ? 'Light Mode' : 'Dark Mode'}</span>
-            </Button>
-            
-            <Button 
-              variant="ghost" 
-              className="w-full justify-start text-gray-300 hover:text-white hover:bg-spyder-dark-blue/30"
-              onClick={handleLogout}
-            >
-              <LogOut size={20} />
-              <span className="ml-3">Logout</span>
             </Button>
           </div>
         </div>
@@ -146,17 +117,6 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
           </div>
 
           <div className="p-4 border-t border-spyder-dark-blue/50">
-            <div className="flex items-center gap-3 mb-4">
-              <Avatar>
-                <AvatarImage src={`https://api.dicebear.com/7.x/initials/svg?seed=${user?.name || 'Guest'}`} />
-                <AvatarFallback>{user?.name?.[0] || 'G'}</AvatarFallback>
-              </Avatar>
-              <div>
-                <p className="text-sm font-medium text-white">{user?.name || 'Guest'}</p>
-                <p className="text-xs text-gray-400">{user?.email || ''}</p>
-              </div>
-            </div>
-            
             <div className="flex flex-col gap-2">
               <Button 
                 variant="ghost" 
@@ -165,15 +125,6 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
               >
                 {isDarkMode ? <SunMoon size={20} /> : <Moon size={20} />}
                 <span className="ml-3">{isDarkMode ? 'Light Mode' : 'Dark Mode'}</span>
-              </Button>
-              
-              <Button 
-                variant="ghost" 
-                className="w-full justify-start text-gray-300 hover:text-white hover:bg-spyder-dark-blue/30"
-                onClick={handleLogout}
-              >
-                <LogOut size={20} />
-                <span className="ml-3">Logout</span>
               </Button>
             </div>
           </div>
@@ -204,11 +155,6 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
             >
               {isDarkMode ? <SunMoon size={20} /> : <Moon size={20} />}
             </Button>
-            
-            <Avatar className="h-8 w-8 md:hidden">
-              <AvatarImage src={`https://api.dicebear.com/7.x/initials/svg?seed=${user?.name || 'Guest'}`} />
-              <AvatarFallback>{user?.name?.[0] || 'G'}</AvatarFallback>
-            </Avatar>
           </div>
         </header>
 
