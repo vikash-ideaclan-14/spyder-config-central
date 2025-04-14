@@ -5,8 +5,11 @@ import { toast } from "sonner";
 export type Config = {
   id: string;
   name: string;
-  value: string;
-  description: string;
+  cookie: string;
+  asbd_id:string,
+  lsd:string,
+  raw_data: string;
+  doc_id:string;
   createdAt: string;
   updatedAt: string;
 };
@@ -41,9 +44,12 @@ const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 // Mock data
 const mockConfigs: Config[] = Array.from({ length: 10 }, (_, i) => ({
   id: `config-${i + 1}`,
-  name: `Config ${i + 1}`,
-  value: `value-${i + 1}`,
-  description: `Description for config ${i + 1}`,
+  name: `Config name ${i + 1}`,
+  cookie: `Config cookie ${i + 1}`,
+  asbd_id: `Config absd_id ${i + 1}`,
+  lsd: `Config lsd ${i + 1}`,
+  raw_data: `Config raw_data ${i + 1}`,
+  doc_id: `Configdoc_id ${i + 1}`,
   createdAt: new Date(Date.now() - Math.random() * 10000000000).toISOString(),
   updatedAt: new Date(Date.now() - Math.random() * 1000000000).toISOString()
 }));

@@ -52,8 +52,11 @@ import DashboardLayout from '@/components/layout/DashboardLayout';
 
 const configFormSchema = z.object({
   name: z.string().min(1, { message: 'Name is required' }),
-  value: z.string().min(1, { message: 'Value is required' }),
-  description: z.string().optional(),
+  cookie: z.string().min(1, { message: 'Cookie is required' }),
+  asbd_id: z.string().min(1, { message: 'asbdId is required' }),
+  lsd: z.string().min(1, { message: 'Lsd is required' }),
+  raw_data: z.string().min(1, { message: 'Raw Data is required' }),
+  doc_id: z.string().min(1, { message: 'DocId is required' }),
 });
 
 type ConfigFormValues = z.infer<typeof configFormSchema>;
@@ -71,26 +74,35 @@ const ConfigPage: React.FC = () => {
     queryFn: configApi.getConfigs,
   });
 
-  const filteredConfigs = configs?.filter(config => 
+  const filteredConfigs = configs?.filter(config =>
     config.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    config.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    config.value.toLowerCase().includes(searchTerm.toLowerCase())
+    config.cookie.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    config.asbd_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    config.lsd.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    config.raw_data.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    config.doc_id.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const form = useForm<ConfigFormValues>({
     resolver: zodResolver(configFormSchema),
     defaultValues: {
       name: '',
-      value: '',
-      description: '',
+      cookie: '',
+      asbd_id: '',
+      lsd: '',
+      raw_data: '',
+      doc_id: ''
     },
   });
 
   const resetForm = () => {
     form.reset({
       name: '',
-      value: '',
-      description: '',
+      cookie: '',
+      asbd_id: '',
+      lsd: '',
+      raw_data: '',
+      doc_id: ''
     });
   };
 
@@ -98,8 +110,11 @@ const ConfigPage: React.FC = () => {
     mutationFn: (data: ConfigFormValues) => {
       return configApi.createConfig({
         name: data.name,
-        value: data.value,
-        description: data.description || '',
+        cookie: data.cookie,
+        asbd_id: data.asbd_id,
+        lsd: data.lsd,
+        raw_data: data.raw_data,
+        doc_id: data.doc_id
       });
     },
     onSuccess: () => {
@@ -111,11 +126,14 @@ const ConfigPage: React.FC = () => {
   });
 
   const updateConfigMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: ConfigFormValues }) => 
+    mutationFn: ({ id, data }: { id: string; data: ConfigFormValues }) =>
       configApi.updateConfig(id, {
         name: data.name,
-        value: data.value,
-        description: data.description || '',
+        cookie: data.cookie,
+        asbd_id: data.asbd_id,
+        lsd: data.lsd,
+        raw_data: data.raw_data,
+        doc_id: data.doc_id
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['configs'] });
@@ -152,8 +170,11 @@ const ConfigPage: React.FC = () => {
     setSelectedConfig(config);
     form.reset({
       name: config.name,
-      value: config.value,
-      description: config.description,
+      cookie: config.cookie,
+      asbd_id: config.asbd_id,
+      lsd: config.lsd,
+      raw_data: config.raw_data,
+      doc_id: config.doc_id
     });
     setIsEditDialogOpen(true);
   };
@@ -226,9 +247,13 @@ const ConfigPage: React.FC = () => {
               <TableHeader>
                 <TableRow>
                   <TableHead>Name</TableHead>
-                  <TableHead>Value</TableHead>
-                  <TableHead className="hidden md:table-cell">Description</TableHead>
-                  <TableHead className="hidden md:table-cell">Last Updated</TableHead>
+                  <TableHead>Cookie</TableHead>
+                  <TableHead className="hidden md:table-cell">AbsdId</TableHead>
+                  <TableHead className="hidden md:table-cell">Lsd</TableHead>
+                  <TableHead className="hidden md:table-cell">Raw Data</TableHead>
+                  <TableHead className="hidden md:table-cell">Doc Id</TableHead>
+                  <TableHead className="hidden md:table-cell">Created At</TableHead>
+                  <TableHead className="hidden md:table-cell">Updated At</TableHead>
                   <TableHead className="w-[60px]"></TableHead>
                 </TableRow>
               </TableHeader>
@@ -245,8 +270,8 @@ const ConfigPage: React.FC = () => {
                       No configurations found
                       {searchTerm && (
                         <div className="mt-2">
-                          <Button 
-                            variant="ghost" 
+                          <Button
+                            variant="ghost"
                             onClick={() => setSearchTerm('')}
                             className="text-spyder-teal"
                           >
@@ -260,9 +285,13 @@ const ConfigPage: React.FC = () => {
                   filteredConfigs?.map((config) => (
                     <TableRow key={config.id}>
                       <TableCell className="font-medium">{config.name}</TableCell>
-                      <TableCell className="font-mono text-sm">{config.value}</TableCell>
-                      <TableCell className="hidden md:table-cell">
-                        {config.description || 'No description'}
+                      <TableCell className="font-mono text-sm">{config.cookie}</TableCell>
+                      <TableCell className="font-mono text-sm">{config.asbd_id}</TableCell>
+                      <TableCell className="font-mono text-sm">{config.lsd}</TableCell>
+                      <TableCell className="font-mono text-sm">{config.raw_data}</TableCell>
+                      <TableCell className="font-mono text-sm">{config.doc_id}</TableCell>
+                      <TableCell className="hidden md:table-cell text-muted-foreground">
+                        {formatDate(config.createdAt)}
                       </TableCell>
                       <TableCell className="hidden md:table-cell text-muted-foreground">
                         {formatDate(config.updatedAt)}
@@ -314,7 +343,7 @@ const ConfigPage: React.FC = () => {
                   <FormItem>
                     <FormLabel>Name</FormLabel>
                     <FormControl>
-                      <Input placeholder="Config name" {...field} />
+                      <Input placeholder="Enter name" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -322,12 +351,12 @@ const ConfigPage: React.FC = () => {
               />
               <FormField
                 control={form.control}
-                name="value"
+                name="cookie"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Value</FormLabel>
+                    <FormLabel>Cookie</FormLabel>
                     <FormControl>
-                      <Input placeholder="Config value" {...field} />
+                      <Input placeholder="Enter cookie" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -335,15 +364,51 @@ const ConfigPage: React.FC = () => {
               />
               <FormField
                 control={form.control}
-                name="description"
+                name="asbd_id"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Description</FormLabel>
+                    <FormLabel>Absd Id</FormLabel>
                     <FormControl>
-                      <Textarea
-                        placeholder="Optional description for this configuration"
-                        {...field}
-                      />
+                      <Input placeholder="Enter asbdId" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="lsd"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>lsd</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Enter lsd" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="raw_data"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Raw Data</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Enter Raw data" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="doc_id"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Doc Id</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Enter DocId" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -387,10 +452,10 @@ const ConfigPage: React.FC = () => {
               />
               <FormField
                 control={form.control}
-                name="value"
+                name="cookie"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Value</FormLabel>
+                    <FormLabel>Cookie</FormLabel>
                     <FormControl>
                       <Input placeholder="Config value" {...field} />
                     </FormControl>
@@ -400,10 +465,58 @@ const ConfigPage: React.FC = () => {
               />
               <FormField
                 control={form.control}
-                name="description"
+                name="asbd_id"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Description</FormLabel>
+                    <FormLabel>Absd Id</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        placeholder="Optional description for this configuration"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="lsd"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Lsd</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        placeholder="Optional description for this configuration"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="raw_data"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Raw Data</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        placeholder="Optional description for this configuration"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="doc_id"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Doc Id</FormLabel>
                     <FormControl>
                       <Textarea
                         placeholder="Optional description for this configuration"
@@ -437,7 +550,7 @@ const ConfigPage: React.FC = () => {
           </DialogHeader>
           <div className="py-4">
             <p className="text-sm font-medium">Configuration: {selectedConfig?.name}</p>
-            <p className="text-sm text-muted-foreground mt-1">{selectedConfig?.description || 'No description'}</p>
+            {/* <p className="text-sm text-muted-foreground mt-1">{selectedConfig?.description || 'No description'}</p> */}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
