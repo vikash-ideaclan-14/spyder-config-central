@@ -27,9 +27,6 @@ const Dashboard: React.FC = () => {
 
   // Prepare ad stats
   const adStats = ads ? [
-    { name: 'Active', value: ads.filter(ad => ad.status === 'active').length },
-    { name: 'Inactive', value: ads.filter(ad => ad.status === 'inactive').length },
-    { name: 'Draft', value: ads.filter(ad => ad.status === 'draft').length },
   ] : [];
 
   // Prepare batch stats
@@ -40,10 +37,8 @@ const Dashboard: React.FC = () => {
   ] : [];
 
   // For clicks/impressions chart
-  const adClicksData = ads ? ads.slice(0, 5).map(ad => ({
+  const adClicksData = ads ? ads.items.slice(0, 5).map(ad => ({
     name: ad.title.substring(0, 10) + (ad.title.length > 10 ? '...' : ''),
-    clicks: ad.clicks,
-    impressions: ad.impressions,
   })) : [];
 
   const COLORS = ['#00B0B9', '#7954A1', '#FF8042', '#FFBB28'];
@@ -64,7 +59,7 @@ const Dashboard: React.FC = () => {
               <Settings className="h-5 w-5 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold">{configs?.length || 0}</div>
+              <div className="text-3xl font-bold">{configs?.spyderConfigs.items.length || 0}</div>
               <Link to="/configs" className="text-sm text-spyder-teal flex items-center mt-2 hover:underline">
                 View Configurations <ArrowRight className="h-4 w-4 ml-1" />
               </Link>
@@ -80,7 +75,7 @@ const Dashboard: React.FC = () => {
               <FileText className="h-5 w-5 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold">{ads?.length || 0}</div>
+              <div className="text-3xl font-bold">{ads?.items.length || 0}</div>
               <Link to="/ads" className="text-sm text-spyder-teal flex items-center mt-2 hover:underline">
                 Manage Advertisements <ArrowRight className="h-4 w-4 ml-1" />
               </Link>
@@ -96,7 +91,7 @@ const Dashboard: React.FC = () => {
               <Layers className="h-5 w-5 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold">{batches?.length || 0}</div>
+                <div className="text-3xl font-bold">{batches?.length || 0}</div>
               <Link to="/batches" className="text-sm text-spyder-teal flex items-center mt-2 hover:underline">
                 Manage Batches <ArrowRight className="h-4 w-4 ml-1" />
               </Link>
@@ -172,7 +167,7 @@ const Dashboard: React.FC = () => {
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm">
                     <span>Recent Updates:</span>
-                    <span className="font-medium">{configs?.slice(0, 3).length || 0}</span>
+                    <span className="font-medium">{configs?.spyderConfigs.items.length || 0}</span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span>Pending Changes:</span>
@@ -190,17 +185,17 @@ const Dashboard: React.FC = () => {
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm">
                     <span>Active:</span>
-                    <span className="font-medium">
+                    {/* <span className="font-medium">
                       {ads?.filter(ad => ad.status === 'active').length || 0}
-                    </span>
+                    </span> */}
                   </div>
                   <div className="flex justify-between text-sm">
                     <span>Total Clicks:</span>
-                    <span className="font-medium">
+                    {/* <span className="font-medium">
                       {ads?.reduce((sum, ad) => sum + ad.clicks, 0) || 0}
-                    </span>
+                    </span> */}
                   </div>
-                  <div className="flex justify-between text-sm">
+                  {/* <div className="flex justify-between text-sm">
                     <span>Conversion Rate:</span>
                     <span className="font-medium">
                       {ads?.length
@@ -211,7 +206,7 @@ const Dashboard: React.FC = () => {
                           ).toFixed(2) + '%'
                         : '0%'}
                     </span>
-                  </div>
+                  </div> */}
                 </div>
               </div>
 

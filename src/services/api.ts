@@ -1,6 +1,8 @@
-
 import { toast } from "sonner";
+// Add these imports at the top
+import { request, gql } from 'graphql-request';
 
+const GRAPHQL_ENDPOINT = 'http://localhost:4127/graphql';
 // Types
 export type Config = {
   id: string;
@@ -14,17 +16,69 @@ export type Config = {
   updatedAt: string;
 };
 
+
+
+export type Language = {
+  id: string;
+  code: string;
+  name: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type Country = {
+  id: string;
+  code: string;
+  name: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type Domain = {
+  id: string;
+  domain: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type Vendor = {
+  id: string;
+  name: string;
+  description: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type Company = {
+  id: string;
+  name: string;
+  description: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type Ad = {
   id: string;
   title: string;
-  description: string;
-  imageUrl: string;
-  targetUrl: string;
+  body: string;
+  original_image_url: string;
+  original_video_url: string;
+  domain: Domain;
+  language: Language;
+  vendor: Vendor;
+  country: Country;
+  company: Company;
+  ctaText: string;
+  link_url: string;
+  caption: string;
+  display_format: string;
+  page_name: string;
+  page_id: string;
   startDate: string;
   endDate: string;
-  status: 'active' | 'inactive' | 'draft';
-  impressions: number;
-  clicks: number;
+  createdAt: string;
+  updatedAt: string;
+  countries: Country[];
 };
 
 export type Batch = {
@@ -54,18 +108,28 @@ const mockConfigs: Config[] = Array.from({ length: 10 }, (_, i) => ({
   updatedAt: new Date(Date.now() - Math.random() * 1000000000).toISOString()
 }));
 
-const mockAds: Ad[] = Array.from({ length: 8 }, (_, i) => ({
-  id: `ad-${i + 1}`,
-  title: `Advertisement ${i + 1}`,
-  description: `This is a description for advertisement ${i + 1}`,
-  imageUrl: `https://source.unsplash.com/random/300x200?ad=${i + 1}`,
-  targetUrl: `https://example.com/ad/${i + 1}`,
-  startDate: new Date(Date.now() - Math.random() * 10000000000).toISOString(),
-  endDate: new Date(Date.now() + Math.random() * 10000000000).toISOString(),
-  status: ['active', 'inactive', 'draft'][Math.floor(Math.random() * 3)] as 'active' | 'inactive' | 'draft',
-  impressions: Math.floor(Math.random() * 10000),
-  clicks: Math.floor(Math.random() * 1000)
-}));
+// const mockAds: Ad[] = Array.from({ length: 8 }, (_, i) => ({
+//   id: `ad-${i + 1}`,
+//   title: `Advertisement Title ${i + 1}`,
+//   body: `This is the body content for advertisement ${i + 1}`,
+//   imageUrl: `https://source.unsplash.com/random/300x200?ad=${i + 1}`,
+//   videoUrl: `https://example.com/video/${i + 1}`,
+//   domain: `example${i + 1}.com`,
+//   language: ['English', 'Spanish', 'French'][Math.floor(Math.random() * 3)],
+//   vendor: `Vendor ${i + 1}`,
+//   country: ['US', 'UK', 'CA', 'AU'][Math.floor(Math.random() * 4)],
+//   company: `Company ${i + 1}`,
+//   ctaText: `Click Here ${i + 1}`,
+//   link_url: `https://example.com/ad/${i + 1}`,
+//   caption: `Caption for ad ${i + 1}`,
+//   display_format: ['banner', 'sidebar', 'popup'][Math.floor(Math.random() * 3)],
+//   page_name: `Page ${i + 1}`,
+//   page_id: `page-${i + 1}`,
+//   startDate: new Date(Date.now() - Math.random() * 10000000000).toISOString(),
+//   endDate: new Date(Date.now() + Math.random() * 10000000000).toISOString(),
+//   createdAt: new Date(Date.now() - Math.random() * 10000000000).toISOString(),
+//   updatedAt: new Date(Date.now() - Math.random() * 1000000000).toISOString()
+// }));
 
 const mockBatches: Batch[] = Array.from({ length: 6 }, (_, i) => ({
   id: `batch-${i + 1}`,
@@ -78,110 +142,59 @@ const mockBatches: Batch[] = Array.from({ length: 6 }, (_, i) => ({
   completedTasks: Math.floor(Math.random() * 20)
 }));
 
-// API functions
-export const configApi = {
-  getConfigs: async (): Promise<Config[]> => {
-    await delay(500);
-    return [...mockConfigs];
-  },
-  
-  getConfig: async (id: string): Promise<Config | null> => {
-    await delay(300);
-    const config = mockConfigs.find(c => c.id === id);
-    return config || null;
-  },
-  
-  createConfig: async (config: Omit<Config, 'id' | 'createdAt' | 'updatedAt'>): Promise<Config> => {
-    await delay(700);
-    const newConfig: Config = {
-      id: `config-${mockConfigs.length + 1}`,
-      ...config,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
-    mockConfigs.push(newConfig);
-    toast.success("Config created successfully");
-    return newConfig;
-  },
-  
-  updateConfig: async (id: string, updates: Partial<Omit<Config, 'id' | 'createdAt' | 'updatedAt'>>): Promise<Config> => {
-    await delay(600);
-    const configIndex = mockConfigs.findIndex(c => c.id === id);
-    if (configIndex === -1) {
-      throw new Error('Config not found');
-    }
-    
-    const updatedConfig = {
-      ...mockConfigs[configIndex],
-      ...updates,
-      updatedAt: new Date().toISOString()
-    };
-    
-    mockConfigs[configIndex] = updatedConfig;
-    toast.success("Config updated successfully");
-    return updatedConfig;
-  },
-  
-  deleteConfig: async (id: string): Promise<void> => {
-    await delay(400);
-    const configIndex = mockConfigs.findIndex(c => c.id === id);
-    if (configIndex !== -1) {
-      mockConfigs.splice(configIndex, 1);
-      toast.success("Config deleted successfully");
-    }
-  }
-};
+
+interface PaginationInfo {
+  total: number;
+  page: number;
+  pageSize: number;
+  sortBy: string | null;
+  sortOrder: string | null;
+  totalPages: number;
+  hasNextPage: boolean;
+  hasPreviousPage: boolean;
+}
+
+interface AdsResponse {
+  items: Ad[];
+  pagination: PaginationInfo;
+}
 
 export const adApi = {
-  getAds: async (): Promise<Ad[]> => {
-    await delay(600);
-    return [...mockAds];
-  },
-  
-  getAd: async (id: string): Promise<Ad | null> => {
-    await delay(300);
-    const ad = mockAds.find(a => a.id === id);
-    return ad || null;
-  },
-  
-  createAd: async (ad: Omit<Ad, 'id' | 'impressions' | 'clicks'>): Promise<Ad> => {
-    await delay(800);
-    const newAd: Ad = {
-      id: `ad-${mockAds.length + 1}`,
-      ...ad,
-      impressions: 0,
-      clicks: 0
-    };
-    mockAds.push(newAd);
-    toast.success("Ad created successfully");
-    return newAd;
-  },
-  
-  updateAd: async (id: string, updates: Partial<Omit<Ad, 'id'>>): Promise<Ad> => {
-    await delay(700);
-    const adIndex = mockAds.findIndex(a => a.id === id);
-    if (adIndex === -1) {
-      throw new Error('Ad not found');
+  getAds: async (page: number = 1, pageSize: number = 20, sortBy: string | null = null, sortOrder: string | null = null): Promise<AdsResponse> => {
+    try {
+      const data = await request<{ ads: AdsResponse }>(
+        GRAPHQL_ENDPOINT,
+        GET_ADS,
+        {
+          pagination: {
+            page,
+            pageSize,
+            sortBy,
+            sortOrder
+          }
+        }
+      );
+      return data.ads;
+    } catch (error) {
+      console.error('Error fetching ads:', error);
+      throw error;
     }
-    
-    const updatedAd = {
-      ...mockAds[adIndex],
-      ...updates
-    };
-    
-    mockAds[adIndex] = updatedAd;
-    toast.success("Ad updated successfully");
-    return updatedAd;
   },
   
-  deleteAd: async (id: string): Promise<void> => {
-    await delay(500);
-    const adIndex = mockAds.findIndex(a => a.id === id);
-    if (adIndex !== -1) {
-      mockAds.splice(adIndex, 1);
-      toast.success("Ad deleted successfully");
-    }
-  }
+  // getAd: async (id: string): Promise<Ad | null> => {
+  //   await delay(300);
+  //   const ad = mockAds.find(a => a.id === id);
+  //   return ad || null;
+  // },
+  
+  // deleteAd: async (id: string): Promise<void> => {
+  //   await delay(500);
+  //   const adIndex = mockAds.findIndex(a => a.id === id);
+  //   if (adIndex !== -1) {
+  //     mockAds.splice(adIndex, 1);
+  //     toast.success("Ad deleted successfully");
+  //   }
+  // }
 };
 
 export const batchApi = {
@@ -231,6 +244,280 @@ export const batchApi = {
     if (batchIndex !== -1) {
       mockBatches.splice(batchIndex, 1);
       toast.success("Batch deleted successfully");
+    }
+  }
+};
+
+
+// Define the types for the GraphQL response
+export interface SpyderConfig {
+  id: string;
+  name: string;
+  cookie: string;
+  asbd_id: string;
+  lsd: string;
+  doc_id_1: string;
+  doc_id_2: string;
+  raw_data: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface SpyderConfigResponse {
+  items: any;
+  pagination: any;
+  spyderConfigs: {
+    items: SpyderConfig[];
+    pagination: PaginationInfo;
+  };
+}
+
+// Define the query
+const GET_SPYDER_CONFIGS = gql`
+  query SpyderConfigs {
+    spyderConfigs {
+      items {
+        id
+        name
+        cookie
+        asbd_id
+        lsd
+        doc_id_1
+        doc_id_2
+        raw_data
+        createdAt
+        updatedAt
+      }
+      pagination {
+        total
+        page
+        pageSize
+        totalPages
+        hasNextPage
+        hasPreviousPage
+      }
+    }
+  }
+`;
+
+const CREATE_SPYDER_CONFIG = gql`
+  mutation CreateSpyderConfig($input: SpyderConfigInput!) {
+    createSpyderConfig(input: $input) {
+      id
+      name
+      cookie
+      asbd_id
+      lsd
+      doc_id_1
+      doc_id_2
+      raw_data
+      createdAt
+      updatedAt
+    }
+  }
+`;
+
+const DELETE_SPYDER_CONFIG = gql`
+  mutation DeleteSpyderConfig($deleteSpyderConfigId: ID!) {
+    deleteSpyderConfig(id: $deleteSpyderConfigId)
+  }
+`;
+
+const UPDATE_SPYDER_CONFIG = gql`
+  mutation UpdateSpyderConfig($updateSpyderConfigId: ID!, $input: SpyderConfigInput!) {
+    updateSpyderConfig(id: $updateSpyderConfigId, input: $input) {
+      id
+      name
+      cookie
+      asbd_id
+      lsd
+      doc_id_1
+      doc_id_2
+      raw_data
+      createdAt
+      updatedAt
+    }
+  }
+`;
+
+const GET_ADS = gql`
+  query Items {
+    ads {
+      items {
+        id
+        title
+        body
+        original_image_url
+        original_video_url
+        cta_text
+        link_url
+        caption
+        display_format
+        page_name
+        page_id
+        startDate
+        endDate
+        createdAt
+        updatedAt
+        vendor {
+          id
+          name
+          description
+          createdAt
+          updatedAt
+        }
+        company {
+          id
+          name
+          description
+          createdAt
+          updatedAt
+        }
+        domain {
+          id
+          domain
+          createdAt
+          updatedAt
+          domainVendor {
+            id
+            name
+            description
+            createdAt
+            updatedAt
+          }
+          domainCompany {
+            id
+            name
+            description
+            createdAt
+            updatedAt
+          }
+        }
+        language {
+          id
+          code
+          name
+          createdAt
+          updatedAt
+        }
+        countries {
+          id
+          code
+          name
+          createdAt
+          updatedAt
+        }
+        batches {
+          id
+          start_date
+          end_date
+          status
+          createdAt
+          updatedAt
+          batchCountry {
+            id
+            code
+            name
+            createdAt
+            updatedAt
+          }
+          associatedGroup {
+            id
+            name
+            status
+            createdAt
+            updatedAt
+          }
+          ads {
+            id
+            title
+            body
+            original_image_url
+            original_video_url
+            cta_text
+            link_url
+            caption
+            display_format
+            page_name
+            page_id
+            startDate
+            endDate
+            createdAt
+            updatedAt
+          }
+        }
+      }
+      pagination {
+        total
+        page
+        pageSize
+        totalPages
+        hasNextPage
+        hasPreviousPage
+      }
+    }
+  }
+`;
+
+export const configApi = {
+  getConfigs: async (): Promise<SpyderConfigResponse> => {
+    try {
+      const data = await request<{ spyderConfigs: SpyderConfigResponse }>(
+        GRAPHQL_ENDPOINT,
+        GET_SPYDER_CONFIGS
+      );
+      return data.spyderConfigs;
+    } catch (error) {
+      console.error('Error fetching configs:', error);
+      throw error;
+    }
+  },
+
+  createConfig: async (input: any): Promise<SpyderConfig> => {
+    try {
+      console.log(input);
+      const data = await request<{ createSpyderConfig: SpyderConfig }>(
+        GRAPHQL_ENDPOINT,
+        CREATE_SPYDER_CONFIG,
+        { input }
+      );
+      toast.success("Config created successfully");
+      return data.createSpyderConfig;
+    } catch (error) {
+      console.error('Error creating config:', error);
+      toast.error("Failed to create config");
+      throw error;
+    }
+  },
+
+  updateConfig: async (id: string, input: any): Promise<SpyderConfig> => {
+    try {
+      const data = await request<{ updateSpyderConfig: SpyderConfig }>(
+        GRAPHQL_ENDPOINT,
+        UPDATE_SPYDER_CONFIG,
+        { updateSpyderConfigId: id, input }
+      );
+      toast.success("Config updated successfully");
+      return data.updateSpyderConfig;
+    } catch (error) {
+      console.error('Error updating config:', error);
+      toast.error("Failed to update config");
+      throw error;
+    }
+  },
+
+  deleteConfig: async (id: string): Promise<void> => {
+    try {
+      await request(
+        GRAPHQL_ENDPOINT,
+        DELETE_SPYDER_CONFIG,
+        { deleteSpyderConfigId: id }
+      );
+      toast.success("Config deleted successfully");
+    } catch (error) {
+      console.error('Error deleting config:', error);
+      toast.error("Failed to delete config");
+      throw error;
     }
   }
 };

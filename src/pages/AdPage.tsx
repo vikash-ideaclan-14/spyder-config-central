@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -22,7 +21,7 @@ import { Badge } from '@/components/ui/badge';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { adApi, Ad } from '@/services/api';
 
-const AdStatusBadge = ({ status }: { status: Ad['status'] }) => {
+const AdStatusBadge = ({ status }: { status: string }) => {
   switch (status) {
     case 'active':
       return (
@@ -58,9 +57,11 @@ const AdPage: React.FC = () => {
     queryFn: adApi.getAds,
   });
 
-  const filteredAds = ads?.filter(ad => 
+  const filteredAds = ads?.items?.filter(ad => 
     ad.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    ad.description.toLowerCase().includes(searchTerm.toLowerCase())
+    ad.body.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    ad.domain.domain.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    ad.company.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const formatDate = (dateString: string) => {
@@ -69,10 +70,6 @@ const AdPage: React.FC = () => {
       month: 'short',
       day: 'numeric',
     });
-  };
-
-  const handleCreateAd = () => {
-    toast.info("Create Ad functionality will be implemented soon");
   };
 
   return (
@@ -85,16 +82,13 @@ const AdPage: React.FC = () => {
               Manage and track all advertisement campaigns
             </p>
           </div>
-          <Button onClick={handleCreateAd} className="bg-spyder-teal hover:bg-spyder-teal/90">
-            <Plus className="mr-2 h-4 w-4" /> Create Ad
-          </Button>
         </div>
 
         <Card>
           <CardHeader className="pb-3">
             <CardTitle>All Advertisements</CardTitle>
             <CardDescription>
-              Track performance and manage your advertising campaigns
+              Track and manage your advertising campaigns
             </CardDescription>
             <div className="relative mt-2">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -139,52 +133,73 @@ const AdPage: React.FC = () => {
                 {filteredAds?.map((ad) => (
                   <Card key={ad.id} className="overflow-hidden card-hover">
                     <div className="relative h-40 bg-muted">
-                      <img
-                        src={ad.imageUrl}
-                        alt={ad.title}
-                        className="w-full h-full object-cover"
-                      />
-                      <div className="absolute top-2 right-2">
-                        <AdStatusBadge status={ad.status} />
+                      {
+                        ad.original_image_url && (
+                          <img
+                            src={ad?.original_image_url}
+                            alt={ad.title}
+                            className="w-full h-full object-cover"
+                          />
+                        )
+                      }
+                      {
+                        ad.original_video_url && (
+                          <video
+                            src={ad?.original_video_url}
+                            className="w-full h-full object-cover"
+                          />
+                        )
+                      }
+                        <div className="absolute top-2 right-2">
+                        <span className="bg-white px-2 py-1 rounded-md text-sm">
+                          {ad.language?.name}
+                        </span>
                       </div>
                     </div>
                     <CardContent className="p-4">
                       <h3 className="text-lg font-semibold mb-2 line-clamp-1">{ad.title}</h3>
                       <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
-                        {ad.description}
+                        {ad.body}
                       </p>
                       
                       <div className="grid grid-cols-2 gap-2 text-sm mb-4">
                         <div className="flex items-center gap-1">
+                          <span className="text-muted-foreground">Domain:</span>
+                            <span>{ad?.domain?.domain}</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <span className="text-muted-foreground">Company:</span>
+                          <span>{ad.company.name}</span>
+                        </div>
+                      </div>
+                      
+                      <div className="grid grid-cols-2 gap-2 text-sm mb-4">
+                        <div className="flex items-center gap-1">
                           <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
-                          <span className="text-muted-foreground">Start:</span>
-                          <span>{formatDate(ad.startDate)}</span>
+                          <span className="text-muted-foreground">Created:</span>
+                          <span>{formatDate(ad.createdAt)}</span>
                         </div>
                         <div className="flex items-center gap-1">
                           <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
-                          <span className="text-muted-foreground">End:</span>
-                          <span>{formatDate(ad.endDate)}</span>
+                          <span className="text-muted-foreground">Updated:</span>
+                          <span>{formatDate(ad.updatedAt)}</span>
                         </div>
                       </div>
                       
                       <div className="flex justify-between items-center">
                         <div className="flex items-center gap-4 text-sm">
                           <div className="flex items-center gap-1">
-                            <Eye className="h-3.5 w-3.5 text-muted-foreground" />
-                            <span>{ad.impressions.toLocaleString()}</span>
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <MousePointer className="h-3.5 w-3.5 text-muted-foreground" />
-                            <span>{ad.clicks.toLocaleString()}</span>
+                            <span className="text-muted-foreground">Vendor:</span>
+                              <span>{ad.vendor.name}</span>
                           </div>
                         </div>
                         <a
-                          href={ad.targetUrl}
+                          href={ad.link_url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-spyder-teal hover:text-spyder-teal/90"
+                          className="text-spyder-teal hover:text-spyder-teal/90 text-sm"
                         >
-                          <ArrowUpRight className="h-4 w-4" />
+                          {ad.ctaText}
                         </a>
                       </div>
                     </CardContent>
