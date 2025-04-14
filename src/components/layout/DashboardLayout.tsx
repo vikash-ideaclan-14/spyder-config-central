@@ -136,11 +136,13 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
         {/* Header */}
         <header className="bg-white dark:bg-gray-800 shadow-sm px-4 py-3 flex items-center justify-between">
           <div className="flex items-center">
-            <SheetTrigger asChild className="md:hidden">
-              <Button variant="ghost" size="icon" onClick={() => setIsMobileMenuOpen(true)}>
-                <Menu size={24} />
-              </Button>
-            </SheetTrigger>
+            <Sheet>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="icon" className="md:hidden">
+                  <Menu size={24} />
+                </Button>
+              </SheetTrigger>
+            </Sheet>
             <h1 className="text-xl font-semibold ml-2 md:ml-0">
               {navLinks.find(link => link.path === location.pathname)?.label || 'Dashboard'}
             </h1>

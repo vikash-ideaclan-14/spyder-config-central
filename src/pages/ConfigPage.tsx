@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { MoreHorizontal, Plus, Pencil, Trash2, Search, X } from 'lucide-react';
@@ -96,21 +95,33 @@ const ConfigPage: React.FC = () => {
   };
 
   const createConfigMutation = useMutation({
-    mutationFn: configApi.createConfig,
+    mutationFn: (data: ConfigFormValues) => {
+      return configApi.createConfig({
+        name: data.name,
+        value: data.value,
+        description: data.description || '',
+      });
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['configs'] });
       setIsAddDialogOpen(false);
       resetForm();
+      toast.success('Configuration added successfully');
     },
   });
 
   const updateConfigMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: Partial<Config> }) => 
-      configApi.updateConfig(id, data),
+    mutationFn: ({ id, data }: { id: string; data: ConfigFormValues }) => 
+      configApi.updateConfig(id, {
+        name: data.name,
+        value: data.value,
+        description: data.description || '',
+      }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['configs'] });
       setIsEditDialogOpen(false);
       setSelectedConfig(null);
+      toast.success('Configuration updated successfully');
     },
   });
 
@@ -158,7 +169,6 @@ const ConfigPage: React.FC = () => {
     }
   };
 
-  // Format date to readable format
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',
@@ -287,7 +297,6 @@ const ConfigPage: React.FC = () => {
         </Card>
       </div>
 
-      {/* Add Configuration Dialog */}
       <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
@@ -353,7 +362,6 @@ const ConfigPage: React.FC = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Edit Configuration Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent className="sm:max-w-[500px]">
           <DialogHeader>
@@ -419,7 +427,6 @@ const ConfigPage: React.FC = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Delete Configuration Dialog */}
       <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
