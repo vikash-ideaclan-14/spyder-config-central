@@ -1,6 +1,7 @@
 import { toast } from "sonner";
 // Add these imports at the top
-import { request, gql } from 'graphql-request';
+import { gql, DocumentNode } from '@apollo/client';
+import { client } from '@/lib/apollo';
 
 const GRAPHQL_ENDPOINT = 'http://localhost:4127/graphql';
 // Base types
@@ -223,8 +224,11 @@ export const adApi = {
           vendorName: filters.vendorName
         }
       };
-      const response = await request<AdsResponse>(GRAPHQL_ENDPOINT, query, variables);
-      return response;
+      const response = await client.query<AdsResponse>({
+        query,
+        variables
+      });
+      return response.data;
     } catch (error) {
       toast.error('Failed to fetch ads');
       throw error;
@@ -268,8 +272,11 @@ export const configApi = {
           pageSize
         }
       };
-      const response = await request<SpyderConfigResponse>(GRAPHQL_ENDPOINT, query, variables);
-      return response;
+      const response = await client.query<SpyderConfigResponse>({
+        query,
+        variables
+      });
+      return response.data;
     } catch (error) {
       toast.error('Failed to fetch configurations');
       throw error;
@@ -294,10 +301,13 @@ export const configApi = {
           }
         }
       `;
-      const response = await request<CreateConfigResponse>(GRAPHQL_ENDPOINT, mutation, { input });
-      if (response.createSpyderConfig) {
+      const response = await client.mutate<CreateConfigResponse>({
+        mutation,
+        variables: { input }
+      });
+      if (response.data?.createSpyderConfig) {
         toast.success('Configuration created successfully');
-        return response.createSpyderConfig;
+        return response.data.createSpyderConfig;
       }
       throw new Error('Failed to create configuration');
     } catch (error) {
@@ -324,10 +334,13 @@ export const configApi = {
           }
         }
       `;
-      const response = await request<UpdateConfigResponse>(GRAPHQL_ENDPOINT, mutation, { id, input });
-      if (response?.updateSpyderConfig) {
+      const response = await client.mutate<UpdateConfigResponse>({
+        mutation,
+        variables: { id, input }
+      });
+      if (response.data?.updateSpyderConfig) {
         toast.success('Configuration updated successfully');
-        return response.updateSpyderConfig;
+        return response.data.updateSpyderConfig;
       }
       throw new Error('Failed to update configuration');
     } catch (error) {
@@ -343,8 +356,11 @@ export const configApi = {
           deleteSpyderConfig(id: $id)
         }
       `;
-      const response = await request<DeleteConfigResponse>(GRAPHQL_ENDPOINT, mutation, { id });
-      if (response?.deleteSpyderConfig) {
+      const response = await client.mutate<DeleteConfigResponse>({
+        mutation,
+        variables: { id }
+      });
+      if (response.data?.deleteSpyderConfig) {
         toast.success('Configuration deleted successfully');
       } else {
         throw new Error('Failed to delete configuration');
@@ -540,8 +556,11 @@ export const batchApi = {
         }
       };
 
-      const response = await request<SpyderBatchesResponse>(GRAPHQL_ENDPOINT, query, variables);
-      return response;
+      const response = await client.query<SpyderBatchesResponse>({
+        query,
+        variables
+      });
+      return response.data;
     } catch (error) {
       toast.error('Failed to fetch batches');
       throw error;
@@ -650,8 +669,11 @@ export const batchApi = {
         }
       `;
 
-      const response = await request<CreateSpyderBatchResponse>(GRAPHQL_ENDPOINT, mutation, { input });
-      return response.createSpyderBatch;
+      const response = await client.mutate<CreateSpyderBatchResponse>({
+        mutation,
+        variables: { input }
+      });
+      return response.data.createSpyderBatch;
     } catch (error) {
       toast.error('Failed to create batch');
       throw error;
@@ -707,23 +729,6 @@ const CREATE_SPYDER_CONFIG = gql`
 const DELETE_SPYDER_CONFIG = gql`
   mutation DeleteSpyderConfig($deleteSpyderConfigId: ID!) {
     deleteSpyderConfig(id: $deleteSpyderConfigId)
-  }
-`;
-
-const UPDATE_SPYDER_CONFIG = gql`
-  mutation UpdateSpyderConfig($updateSpyderConfigId: ID!, $input: SpyderConfigInput!) {
-    updateSpyderConfig(id: $updateSpyderConfigId, input: $input) {
-      id
-      name
-      cookie
-      asbd_id
-      lsd
-      doc_id_1
-      doc_id_2
-      raw_data
-      createdAt
-      updatedAt
-    }
   }
 `;
 
@@ -873,8 +878,11 @@ export const countryApi = {
         }
       };
 
-      const response = await request<CountriesResponse>(GRAPHQL_ENDPOINT, query, variables);
-      return response;
+      const response = await client.query<CountriesResponse>({
+        query,
+        variables
+      });
+      return response.data;
     } catch (error) {
       toast.error('Failed to fetch countries');
       throw error;
@@ -899,32 +907,59 @@ export interface SpyderGroupsResponse {
   };
 }
 
-export const groupApi = {
-  getGroups: async (page: number = 1, pageSize: number = 10): Promise<SpyderGroupsResponse> => {
+export interface Company {
+  id: string;
+  name: string;
+  description: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CompaniesResponse {
+  companies: {
+    items: Company[];
+    pagination: PaginationInfo;
+  };
+}
+
+export interface Vendor {
+  id: string;
+  name: string;
+  description: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface VendorsResponse {
+  vendors: {
+    items: Vendor[];
+    pagination: PaginationInfo;
+  };
+}
+
+export interface CreateSpyedGroupInput {
+  name: string;
+  status: string;
+  companyIds: string[];
+  vendorIds: string[];
+}
+
+export interface CreateSpyedGroupResponse {
+  createSpyedGroup: SpyderGroup;
+}
+
+export const companyApi = {
+  getCompanies: async (page: number = 1, pageSize: number = 10): Promise<CompaniesResponse> => {
     try {
       const query = gql`
-        query SpyedGroups($pagination: PaginationInput) {
-          spyedGroups(pagination: $pagination) {
+        query Companies($pagination: PaginationInput) {
+          companies(pagination: $pagination) {
             items {
               id
               name
-              status
+              description
               createdAt
               updatedAt
-              vendor {
-                id
-                name
-                description
-                createdAt
-                updatedAt
-              }
-              company {
-                id
-                name
-                description
-                createdAt
-                updatedAt
-              }
             }
             pagination {
               total
@@ -945,11 +980,157 @@ export const groupApi = {
         }
       };
 
-      const response = await request<SpyderGroupsResponse>(GRAPHQL_ENDPOINT, query, variables);
-      return response;
+      const response = await client.query<CompaniesResponse>({
+        query,
+        variables
+      });
+      return response.data;
+    } catch (error) {
+      toast.error('Failed to fetch companies');
+      throw error;
+    }
+  }
+};
+
+export const vendorApi = {
+  getVendors: async (page: number = 1, pageSize: number = 10): Promise<VendorsResponse> => {
+    try {
+      const query = gql`
+        query Vendors($pagination: PaginationInput) {
+          vendors(pagination: $pagination) {
+            items {
+              id
+              name
+              description
+              createdAt
+              updatedAt
+            }
+            pagination {
+              total
+              page
+              pageSize
+              totalPages
+              hasNextPage
+              hasPreviousPage
+            }
+          }
+        }
+      `;
+
+      const variables = {
+        pagination: {
+          page,
+          pageSize
+        }
+      };
+
+      const response = await client.query<VendorsResponse>({
+        query,
+        variables
+      });
+      return response.data;
+    } catch (error) {
+      toast.error('Failed to fetch vendors');
+      throw error;
+    }
+  }
+};
+
+const GET_GROUPS_QUERY: DocumentNode = gql`
+  query GetGroups($pagination: PaginationInput!) {
+    spyedGroups(pagination: $pagination) {
+      items {
+        id
+        name
+        status
+        createdAt
+        updatedAt
+        company {
+          id
+          name
+        }
+        vendor {
+          id
+          name
+        }
+      }
+      pagination {
+        total
+        page
+        pageSize
+        totalPages
+        hasNextPage
+        hasPreviousPage
+      }
+    }
+  }
+`;
+
+const CREATE_GROUP_MUTATION: DocumentNode = gql`
+  mutation CreateSpyedGroup($input: CreateSpyedGroupInput!) {
+    createSpyedGroup(input: $input) {
+      id
+      name
+      status
+      createdAt
+      updatedAt
+      company {
+        id
+        name
+      }
+      vendor {
+        id
+        name
+      }
+    }
+  }
+`;
+
+const DELETE_GROUP_MUTATION: DocumentNode = gql`
+  mutation DeleteGroup($id: ID!) {
+    deleteGroup(id: $id) {
+      success
+    }
+  }
+`;
+
+export const groupApi = {
+  getGroups: async (page = 1, pageSize = 10): Promise<SpyderGroupsResponse> => {
+    try {
+      const { data } = await client.query<SpyderGroupsResponse>({
+        query: GET_GROUPS_QUERY,
+        variables: { pagination: { page, pageSize } },
+      });
+      return data;
     } catch (error) {
       toast.error('Failed to fetch groups');
       throw error;
     }
-  }
+  },
+
+  createGroup: async (input: CreateSpyedGroupInput): Promise<CreateSpyedGroupResponse> => {
+    try {
+      const { data } = await client.mutate<CreateSpyedGroupResponse>({
+        mutation: CREATE_GROUP_MUTATION,
+        variables: { input },
+      });
+      return data;
+    } catch (error) {
+      toast.error('Failed to create group');
+      throw error;
+    }
+  },
+
+  deleteGroup: async (id: string): Promise<{ success: boolean }> => {
+    try {
+      const { data } = await client.mutate<{ deleteGroup: { success: boolean } }>({
+        mutation: DELETE_GROUP_MUTATION,
+        variables: { id },
+      });
+      return data.deleteGroup;
+    } catch (error) {
+      toast.error('Failed to delete group');
+      throw error;
+    }
+  },
 };

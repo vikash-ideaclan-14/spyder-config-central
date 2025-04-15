@@ -16,7 +16,7 @@ import BatchPage from "./pages/BatchPage";
 import SettingsPage from "./pages/SettingsPage";
 import NotFound from "./pages/NotFound";
 import Index from "./pages/Index";
-
+import GroupPage from "./pages/GroupPage";
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -39,7 +39,8 @@ const App = () => (
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/configs" element={<ConfigPage />} />
               <Route path="/ads" element={<AdPage />} />
-              <Route path="/batches" element={<BatchPage />} />
+              <Route path="/batches" element={<BatchPage />} /> 
+              <Route path="/groups" element={<GroupPage />} />
               <Route path="/settings" element={<SettingsPage />} />
               
               {/* 404 Page */}
