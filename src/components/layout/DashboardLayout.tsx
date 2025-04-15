@@ -41,7 +41,7 @@ type DashboardLayoutProps = {
   children: React.ReactNode;
 };
 
-const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
+export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
   const { isDarkMode, toggleDarkMode } = useApp();
   const location = useLocation();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -174,5 +174,3 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
     </div>
   );
 };
-
-export default DashboardLayout;

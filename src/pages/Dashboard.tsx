@@ -6,17 +6,17 @@ import { Settings, FileText, Layers, ArrowRight } from 'lucide-react';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { adApi, batchApi, configApi } from '@/services/api';
-import DashboardLayout from '@/components/layout/DashboardLayout';
+import { DashboardLayout } from '@/components/layout/DashboardLayout';
 
 const Dashboard: React.FC = () => {
   const { data: configs } = useQuery({
     queryKey: ['configs'],
-    queryFn: () => configApi.getConfigs(1, 20, 'createdAt', 'desc'),
+    queryFn: () => configApi.getConfigs(),
   });
 
   const { data: ads } = useQuery({
     queryKey: ['ads'],
-    queryFn: () => adApi.getAds(1, 20, 'createdAt', 'desc'),
+    queryFn: () => adApi.getAds(),
   });
 
   const { data: batches } = useQuery({
@@ -35,8 +35,9 @@ const Dashboard: React.FC = () => {
     { name: 'Upcoming', value: batches.filter(batch => batch.status === 'upcoming').length },
   ] : [];
 
+  console.log(batchData);
   // For clicks/impressions chart
-  const adClicksData = ads ? ads.items.slice(0, 5).map(ad => ({
+  const adClicksData = ads ? ads.ads.items.slice(0, 5).map(ad => ({
     name: ad.title.substring(0, 10) + (ad.title.length > 10 ? '...' : ''),
   })) : [];
 
@@ -74,7 +75,7 @@ const Dashboard: React.FC = () => {
               <FileText className="h-5 w-5 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold">{ads?.items.length || 0}</div>
+              <div className="text-3xl font-bold">{ads?.ads.items.length || 0}</div>
               <Link to="/ads" className="text-sm text-spyder-teal flex items-center mt-2 hover:underline">
                 Manage Advertisements <ArrowRight className="h-4 w-4 ml-1" />
               </Link>
@@ -185,7 +186,7 @@ const Dashboard: React.FC = () => {
                   <div className="flex justify-between text-sm">
                     <span>Active:</span>
                     <span className="font-medium">
-                      {ads?.items.filter(ad => ad.status === 'active').length || 0}
+                      {ads?.ads.items.filter(ad => ad.status === 'active').length || 0}
                     </span>
                   </div>
                   <div className="flex justify-between text-sm">

@@ -1,5 +1,8 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
 import { Search, X, Calendar, Plus, Pencil, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -32,7 +35,15 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import DashboardLayout from '@/components/layout/DashboardLayout';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { configApi, SpyderConfig } from '@/services/api';
 import { formatDate } from '@/lib/utils';
 import { Pagination } from '@/components/ui/pagination';
@@ -46,20 +57,45 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
+const configFormSchema = z.object({
+  name: z.string().min(2, "Name must be at least 2 characters"),
+  cookie: z.string().min(1, "Cookie is required"),
+  asbd_id: z.string().min(1, "ASBD ID is required"),
+  lsd: z.string().min(1, "LSD is required"),
+  doc_id_1: z.string().min(1, "Doc ID 1 is required"),
+  doc_id_2: z.string().min(1, "Doc ID 2 is required"),
+  raw_data: z.string().min(1, "Raw data is required"),
+});
+
+type ConfigFormValues = {
+  name: string;
+  cookie: string;
+  asbd_id: string;
+  lsd: string;
+  doc_id_1: string;
+  doc_id_2: string;
+  raw_data: string;
+};
+
 const ConfigPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedConfig, setSelectedConfig] = useState<SpyderConfig | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [newConfig, setNewConfig] = useState({
-    name: '',
-    cookie: '',
-    asbd_id: '',
-    lsd: '',
-    doc_id_1: '',
-    doc_id_2: '',
-    raw_data: '',
+  const [validationTimeout, setValidationTimeout] = useState<NodeJS.Timeout | null>(null);
+
+  const form = useForm<ConfigFormValues>({
+    resolver: zodResolver(configFormSchema),
+    defaultValues: {
+      name: "",
+      cookie: "",
+      asbd_id: "",
+      lsd: "",
+      doc_id_1: "",
+      doc_id_2: "",
+      raw_data: "",
+    },
   });
 
   const { currentPage, pageSize, handlePageChange, handlePageSizeChange } = usePagination();
@@ -72,19 +108,11 @@ const ConfigPage: React.FC = () => {
   });
 
   const createMutation = useMutation({
-    mutationFn: configApi.createConfig,
+    mutationFn: (values: ConfigFormValues) => configApi.createConfig(values),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['configs'] });
       setIsDialogOpen(false);
-      setNewConfig({
-        name: '',
-        cookie: '',
-        asbd_id: '',
-        lsd: '',
-        doc_id_1: '',
-        doc_id_2: '',
-        raw_data: '',
-      });
+      form.reset();
       toast.success('Config created successfully');
     },
     onError: (error) => {
@@ -93,7 +121,8 @@ const ConfigPage: React.FC = () => {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, input }: { id: string; input: any }) => configApi.updateConfig(id, input),
+    mutationFn: ({ id, input }: { id: string; input: ConfigFormValues }) => 
+      configApi.updateConfig(id, input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['configs'] });
       setIsEditDialogOpen(false);
@@ -106,7 +135,7 @@ const ConfigPage: React.FC = () => {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: configApi.deleteConfig,
+    mutationFn: (id: string) => configApi.deleteConfig(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['configs'] });
       setIsDeleteDialogOpen(false);
@@ -118,13 +147,67 @@ const ConfigPage: React.FC = () => {
     }
   });
 
-  const handleCreateConfig = () => {
-    createMutation.mutate(newConfig);
+  // Clear validation warnings after 5 seconds
+  const clearValidationWarnings = () => {
+    if (validationTimeout) {
+      clearTimeout(validationTimeout);
+    }
+    const timeout = setTimeout(() => {
+      form.clearErrors();
+    }, 3000);
+    setValidationTimeout(timeout);
   };
 
-  const handleUpdateConfig = () => {
+  // Handle dialog open/close
+  const handleDialogOpenChange = (open: boolean) => {
+    setIsDialogOpen(open);
+    if (!open) {
+      form.reset();
+      form.clearErrors();
+      if (validationTimeout) {
+        clearTimeout(validationTimeout);
+        setValidationTimeout(null);
+      }
+    }
+  };
+
+  // Handle edit dialog open/close
+  const handleEditDialogOpenChange = (open: boolean) => {
+    setIsEditDialogOpen(open);
+    if (!open) {
+      form.reset();
+      form.clearErrors();
+      if (validationTimeout) {
+        clearTimeout(validationTimeout);
+        setValidationTimeout(null);
+      }
+    }
+  };
+
+  // Watch for form changes to trigger validation clearing
+  React.useEffect(() => {
+    const subscription = form.watch(() => {
+      clearValidationWarnings();
+    });
+    return () => subscription.unsubscribe();
+  }, [form]);
+
+  // Cleanup timeout on unmount
+  React.useEffect(() => {
+    return () => {
+      if (validationTimeout) {
+        clearTimeout(validationTimeout);
+      }
+    };
+  }, [validationTimeout]);
+
+  const handleCreateConfig = (values: ConfigFormValues) => {
+    createMutation.mutate(values);
+  };
+
+  const handleUpdateConfig = (values: ConfigFormValues) => {
     if (selectedConfig) {
-      updateMutation.mutate({ id: selectedConfig.id, input: selectedConfig });
+      updateMutation.mutate({ id: selectedConfig.id, input: values });
     }
   };
 
@@ -134,7 +217,7 @@ const ConfigPage: React.FC = () => {
 
   const handleEditClick = (config: SpyderConfig) => {
     setSelectedConfig(config);
-    setNewConfig({
+    form.reset({
       name: config.name,
       cookie: config.cookie,
       asbd_id: config.asbd_id,
@@ -145,7 +228,7 @@ const ConfigPage: React.FC = () => {
     });
     setIsEditDialogOpen(true);
   };
-  const filteredConfigs = data?.items?.filter(config => 
+  const filteredConfigs = data?.spyderConfigs.items.filter(config => 
     config.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     config.cookie.toLowerCase().includes(searchTerm.toLowerCase()) ||
     config.asbd_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -153,7 +236,6 @@ const ConfigPage: React.FC = () => {
     config.doc_id_1.toLowerCase().includes(searchTerm.toLowerCase()) ||
     config.doc_id_2.toLowerCase().includes(searchTerm.toLowerCase())
   ) || [];
-
   if (error) {
     return (
       <DashboardLayout>
@@ -175,7 +257,7 @@ const ConfigPage: React.FC = () => {
                 Manage and track all spyder configurations
               </p>
             </div>
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <Dialog open={isDialogOpen} onOpenChange={handleDialogOpenChange}>
               <DialogTrigger asChild>
                 <Button className="bg-spyder-teal hover:bg-spyder-teal/90">
                   <Plus className="mr-2 h-4 w-4" />
@@ -189,62 +271,110 @@ const ConfigPage: React.FC = () => {
                     Fill in the details for your new spyder configuration.
                   </DialogDescription>
                 </DialogHeader>
-                <div className="grid gap-4 py-4">
-                  <div className="grid gap-3">
-                    <Input
-                      placeholder="Name"
-                      value={newConfig.name}
-                      onChange={(e) => setNewConfig({ ...newConfig, name: e.target.value })}
-                      className="w-full"
+                <Form {...form}>
+                  <form onSubmit={form.handleSubmit(handleCreateConfig)} className="space-y-4">
+                    <FormField
+                      control={form.control}
+                      name="name"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Name</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Enter config name" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
                     />
-                    <Input
-                      placeholder="Cookie"
-                      value={newConfig.cookie}
-                      onChange={(e) => setNewConfig({ ...newConfig, cookie: e.target.value })}
-                      className="w-full"
+                    <FormField
+                      control={form.control}
+                      name="cookie"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Cookie</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Enter cookie" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
                     />
-                    <Input
-                      placeholder="ASBD ID"
-                      value={newConfig.asbd_id}
-                      onChange={(e) => setNewConfig({ ...newConfig, asbd_id: e.target.value })}
-                      className="w-full"
+                    <FormField
+                      control={form.control}
+                      name="asbd_id"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>ASBD ID</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Enter ASBD ID" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
                     />
-                    <Input
-                      placeholder="LSD"
-                      value={newConfig.lsd}
-                      onChange={(e) => setNewConfig({ ...newConfig, lsd: e.target.value })}
-                      className="w-full"
+                    <FormField
+                      control={form.control}
+                      name="lsd"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>LSD</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Enter LSD" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
                     />
-                    <Input
-                      placeholder="Doc ID 1"
-                      value={newConfig.doc_id_1}
-                      onChange={(e) => setNewConfig({ ...newConfig, doc_id_1: e.target.value })}
-                      className="w-full"
+                    <FormField
+                      control={form.control}
+                      name="doc_id_1"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Doc ID 1</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Enter Doc ID 1" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
                     />
-                    <Input
-                      placeholder="Doc ID 2"
-                      value={newConfig.doc_id_2}
-                      onChange={(e) => setNewConfig({ ...newConfig, doc_id_2: e.target.value })}
-                      className="w-full"
+                    <FormField
+                      control={form.control}
+                      name="doc_id_2"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Doc ID 2</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Enter Doc ID 2" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
                     />
-                    <Input
-                      placeholder="Raw Data"
-                      value={newConfig.raw_data}
-                      onChange={(e) => setNewConfig({ ...newConfig, raw_data: e.target.value })}
-                      className="w-full"
+                    <FormField
+                      control={form.control}
+                      name="raw_data"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Raw Data</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Enter raw data" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
                     />
-                  </div>
-                </div>
-                <DialogFooter>
-                  <Button
-                    type="submit"
-                    onClick={handleCreateConfig}
-                    disabled={createMutation.isPending}
-                    className="bg-spyder-teal hover:bg-spyder-teal/90"
-                  >
-                    {createMutation.isPending ? 'Creating...' : 'Create Config'}
-                  </Button>
-                </DialogFooter>
+                    <DialogFooter>
+                      <Button
+                        type="submit"
+                        disabled={createMutation.isPending}
+                        className="bg-spyder-teal hover:bg-spyder-teal/90"
+                      >
+                        {createMutation.isPending ? 'Creating...' : 'Create Config'}
+                      </Button>
+                    </DialogFooter>
+                  </form>
+                </Form>
               </DialogContent>
             </Dialog>
           </div>
@@ -321,8 +451,12 @@ const ConfigPage: React.FC = () => {
                             <TableCell className="whitespace-nowrap">{config.lsd}</TableCell>
                             <TableCell className="whitespace-nowrap">{config.doc_id_1}</TableCell>
                             <TableCell className="whitespace-nowrap">{config.doc_id_2}</TableCell>
-                            <TableCell className="whitespace-nowrap">{formatDate(config.createdAt)}</TableCell>
-                            <TableCell className="whitespace-nowrap">{formatDate(config.updatedAt)}</TableCell>
+                            <TableCell className="whitespace-nowrap">
+                              {config.createdAt ? formatDate(parseInt(config.createdAt)) : 'N/A'}
+                            </TableCell>
+                            <TableCell className="whitespace-nowrap">
+                              {config.updatedAt ? formatDate(parseInt(config.updatedAt)) : 'N/A'}
+                            </TableCell>
                             <TableCell className="whitespace-nowrap">
                               <div className="flex gap-2">
                                 <Button
@@ -418,7 +552,7 @@ const ConfigPage: React.FC = () => {
           </div>
         )}
 
-        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <Dialog open={isEditDialogOpen} onOpenChange={handleEditDialogOpenChange}>
           <DialogContent className="sm:max-w-[425px]">
             <DialogHeader>
               <DialogTitle>Edit Config</DialogTitle>
@@ -430,38 +564,38 @@ const ConfigPage: React.FC = () => {
               <div className="grid gap-2">
                 <Input
                   placeholder="Name"
-                  value={newConfig.name}
-                  onChange={(e) => setNewConfig({ ...newConfig, name: e.target.value })}
+                  value={form.getValues('name')}
+                  onChange={(e) => form.setValue('name', e.target.value)}
                 />
                 <Input
                   placeholder="Cookie"
-                  value={newConfig.cookie}
-                  onChange={(e) => setNewConfig({ ...newConfig, cookie: e.target.value })}
+                  value={form.getValues('cookie')}
+                  onChange={(e) => form.setValue('cookie', e.target.value)}
                 />
                 <Input
                   placeholder="ASBD ID"
-                  value={newConfig.asbd_id}
-                  onChange={(e) => setNewConfig({ ...newConfig, asbd_id: e.target.value })}
+                  value={form.getValues('asbd_id')}
+                  onChange={(e) => form.setValue('asbd_id', e.target.value)}
                 />
                 <Input
                   placeholder="LSD"
-                  value={newConfig.lsd}
-                  onChange={(e) => setNewConfig({ ...newConfig, lsd: e.target.value })}
+                  value={form.getValues('lsd')}
+                  onChange={(e) => form.setValue('lsd', e.target.value)}
                 />
                 <Input
                   placeholder="Doc ID 1"
-                  value={newConfig.doc_id_1}
-                  onChange={(e) => setNewConfig({ ...newConfig, doc_id_1: e.target.value })}
+                  value={form.getValues('doc_id_1')}
+                  onChange={(e) => form.setValue('doc_id_1', e.target.value)}
                 />
                 <Input
                   placeholder="Doc ID 2"
-                  value={newConfig.doc_id_2}
-                  onChange={(e) => setNewConfig({ ...newConfig, doc_id_2: e.target.value })}
+                  value={form.getValues('doc_id_2')}
+                  onChange={(e) => form.setValue('doc_id_2', e.target.value)}
                 />
                 <Input
                   placeholder="Raw Data"
-                  value={newConfig.raw_data}
-                  onChange={(e) => setNewConfig({ ...newConfig, raw_data: e.target.value })}
+                  value={form.getValues('raw_data')}
+                  onChange={(e) => form.setValue('raw_data', e.target.value)}
                 />
               </div>
             </div>
@@ -470,7 +604,7 @@ const ConfigPage: React.FC = () => {
                 Cancel
               </Button>
               <Button
-                onClick={() => updateMutation.mutate({ id: selectedConfig.id, input: selectedConfig })}
+                onClick={() => updateMutation.mutate({ id: selectedConfig.id, input: form.getValues() })}
                 disabled={updateMutation.isPending}
               >
                 {updateMutation.isPending ? 'Updating...' : 'Update'}

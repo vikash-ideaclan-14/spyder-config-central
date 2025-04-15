@@ -3,68 +3,63 @@ import { toast } from "sonner";
 import { request, gql } from 'graphql-request';
 
 const GRAPHQL_ENDPOINT = 'http://localhost:4127/graphql';
-// Types
-export type Config = {
+// Base types
+export interface BaseEntity {
   id: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Domain specific types
+export interface Config extends BaseEntity {
   name: string;
   cookie: string;
-  asbd_id:string,
-  lsd:string,
+  asbd_id: string;
+  lsd: string;
   raw_data: string;
-  doc_id:string;
-  createdAt: string;
-  updatedAt: string;
-};
+  doc_id: string;
+}
 
-
-
-export type Language = {
-  id: string;
+export interface Language extends BaseEntity {
   code: string;
   name: string;
-  createdAt: string;
-  updatedAt: string;
-};
+}
 
-export type Country = {
-  id: string;
+export interface Country extends BaseEntity {
   code: string;
   name: string;
-  createdAt: string;
-  updatedAt: string;
-};
+}
 
-export type Domain = {
-  id: string;
+export interface Domain extends BaseEntity {
   domain: string;
-  createdAt: string;
-  updatedAt: string;
-};
+}
 
-export type Vendor = {
-  id: string;
+export interface Vendor extends BaseEntity {
   name: string;
   description: string;
-  createdAt: string;
-  updatedAt: string;
-};
+}
 
-export type Company = {
-  id: string;
+export interface Company extends BaseEntity {
   name: string;
   description: string;
-  createdAt: string;
-  updatedAt: string;
-};
+}
 
-export interface AssociatedGroup {
-  id: string;
+export interface AssociatedGroup extends BaseEntity {
   name: string;
   type: string;
 }
 
-export interface Ad {
-  id: string;
+export interface Batch extends BaseEntity {
+  name: string;
+  description: string;
+  startDate: string;
+  endDate: string;
+  status: 'active' | 'completed' | 'upcoming';
+  totalTasks: number;
+  completedTasks: number;
+}
+
+export interface Ad extends BaseEntity {
   title: string;
   body: string;
   original_image_url: string;
@@ -81,19 +76,261 @@ export interface Ad {
   display_format: string;
   startDate: string;
   endDate: string;
-  createdAt: string;
-  updatedAt: string;
 }
 
-export type Batch = {
-  id: string;
+export interface SpyderConfig extends BaseEntity {
   name: string;
-  description: string;
-  startDate: string;
-  endDate: string;
-  status: 'active' | 'completed' | 'upcoming';
-  totalTasks: number;
-  completedTasks: number;
+  cookie: string;
+  asbd_id: string;
+  lsd: string;
+  doc_id_1: string;
+  doc_id_2: string;
+  raw_data: string;
+}
+
+// Response types
+export interface PaginationInfo {
+  total: number;
+  page: number;
+  pageSize: number;
+  sortBy: string | null;
+  sortOrder: string | null;
+  totalPages: number;
+  hasNextPage: boolean;
+  hasPreviousPage: boolean;
+}
+
+export interface AdsResponse {
+  ads: {
+    items: Ad[];
+    pagination: PaginationInfo;
+  };
+}
+
+export interface SpyderConfigResponse {
+  spyderConfigs: {
+    items: SpyderConfig[];
+    pagination: PaginationInfo;
+  };
+}
+
+// GraphQL response types
+interface GraphQLResponse<T> {
+  data: T;
+}
+
+interface CreateConfigResponse {
+    createSpyderConfig: SpyderConfig;
+}
+
+interface UpdateConfigResponse {
+  updateSpyderConfig: SpyderConfig;
+}
+
+interface DeleteConfigResponse {
+  deleteSpyderConfig: boolean;
+}
+
+// API implementation
+export const adApi = {
+  getAds: async (page: number = 1, pageSize: number = 10): Promise<AdsResponse> => {
+    try {
+      const query = gql`
+        query GetAds($pagination: PaginationInput!) {
+          ads(pagination: $pagination) {
+            items {
+              id
+              title
+              body
+              original_image_url
+              original_video_url
+              link_url
+              cta_text
+              display_format
+              page_name
+              page_id
+              startDate
+              endDate
+              createdAt
+              updatedAt
+              vendor {
+                id
+                name
+              }
+              company {
+                id
+                name
+              }
+              domain {
+                id
+                domain
+              }
+              language {
+                id
+                name
+              }
+              countries {
+                id
+                name
+              }
+              batches {
+                id
+                start_date
+                end_date
+                status
+                createdAt
+                updatedAt
+              }
+            }
+            pagination {
+              total
+              page
+              pageSize
+              totalPages
+              hasNextPage
+              hasPreviousPage
+            }
+          }
+        }
+      `;
+
+      const variables = { 
+        pagination: {
+          page,
+          pageSize
+        }
+      };
+      const response = await request<AdsResponse>(GRAPHQL_ENDPOINT, query, variables);
+      return response;
+    } catch (error) {
+      toast.error('Failed to fetch ads');
+      throw error;
+    }
+  }
+};
+
+export const configApi = {
+  getConfigs: async (page: number = 1, pageSize: number = 10): Promise<SpyderConfigResponse> => {
+    try {
+      const query = gql`
+        query GetConfigs($pagination: PaginationInput!) {
+          spyderConfigs(pagination: $pagination) {
+            items {
+              id
+              name
+              cookie
+              asbd_id
+              lsd
+              doc_id_1
+              doc_id_2
+              raw_data
+              createdAt
+              updatedAt
+            }
+            pagination {
+              total
+              page
+              pageSize
+              totalPages
+              hasNextPage
+              hasPreviousPage
+            }
+          }
+        }
+      `;
+
+      const variables = { 
+        pagination: {
+          page,
+          pageSize
+        }
+      };
+      const response = await request<SpyderConfigResponse>(GRAPHQL_ENDPOINT, query, variables);
+      return response;
+    } catch (error) {
+      toast.error('Failed to fetch configurations');
+      throw error;
+    }
+  },
+
+  createConfig: async (input: Omit<SpyderConfig, 'id' | 'createdAt' | 'updatedAt'>): Promise<SpyderConfig> => {
+    try {
+      const mutation = gql`
+        mutation CreateSpyderConfig($input: SpyderConfigInput!) {
+          createSpyderConfig(input: $input) {
+            id
+            name
+            cookie
+            asbd_id
+            lsd
+            doc_id_1
+            doc_id_2
+            raw_data
+            createdAt
+            updatedAt
+          }
+        }
+      `;
+      const response = await request<CreateConfigResponse>(GRAPHQL_ENDPOINT, mutation, { input });
+      if (response.createSpyderConfig) {
+        toast.success('Configuration created successfully');
+        return response.createSpyderConfig;
+      }
+      throw new Error('Failed to create configuration');
+    } catch (error) {
+      toast.error('Failed to create configuration');
+      throw error;
+    }
+  },
+
+  updateConfig: async (id: string, input: Partial<SpyderConfig>): Promise<SpyderConfig> => {
+    try {
+      const mutation = gql`
+        mutation UpdateSpyderConfig($id: ID!, $input: SpyderConfigInput!) {
+          updateSpyderConfig(id: $id, input: $input) {
+            id
+            name
+            cookie
+            asbd_id
+            lsd
+            doc_id_1
+            doc_id_2
+            raw_data
+            createdAt
+            updatedAt
+          }
+        }
+      `;
+      const response = await request<UpdateConfigResponse>(GRAPHQL_ENDPOINT, mutation, { id, input });
+      if (response?.updateSpyderConfig) {
+        toast.success('Configuration updated successfully');
+        return response.updateSpyderConfig;
+      }
+      throw new Error('Failed to update configuration');
+    } catch (error) {
+      toast.error('Failed to update configuration');
+      throw error;
+    }
+  },
+
+  deleteConfig: async (id: string): Promise<void> => {
+    try {
+      const mutation = gql`
+        mutation DeleteSpyderConfig($id: ID!) {
+          deleteSpyderConfig(id: $id)
+        }
+      `;
+      const response = await request<DeleteConfigResponse>(GRAPHQL_ENDPOINT, mutation, { id });
+      if (response?.deleteSpyderConfig) {
+        toast.success('Configuration deleted successfully');
+      } else {
+        throw new Error('Failed to delete configuration');
+      }
+    } catch (error) {
+      toast.error('Failed to delete configuration');
+      throw error;
+    }
+  }
 };
 
 // Delay helper to simulate network latency
@@ -143,49 +380,10 @@ const mockBatches: Batch[] = Array.from({ length: 6 }, (_, i) => ({
   endDate: new Date(Date.now() + Math.random() * 10000000000).toISOString(),
   status: ['active', 'completed', 'upcoming'][Math.floor(Math.random() * 3)] as 'active' | 'completed' | 'upcoming',
   totalTasks: Math.floor(Math.random() * 100) + 20,
-  completedTasks: Math.floor(Math.random() * 20)
+  completedTasks: Math.floor(Math.random() * 20),
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString()
 }));
-
-
-interface PaginationInfo {
-  total: number;
-  page: number;
-  pageSize: number;
-  sortBy: string | null;
-  sortOrder: string | null;
-  totalPages: number;
-  hasNextPage: boolean;
-  hasPreviousPage: boolean;
-}
-
-interface AdsResponse {
-  items: Ad[];
-  pagination: PaginationInfo;
-}
-
-export const adApi = {
-  getAds: async (page: number = 1, pageSize: number = 20, sortBy: string | null = null, sortOrder: string | null = null): Promise<AdsResponse> => {
-    try {
-      const data = await request<{ ads: AdsResponse }>(
-        GRAPHQL_ENDPOINT,
-        GET_ADS,
-        {
-          pagination: {
-            page,
-            pageSize,
-            sortBy,
-            sortOrder
-          }
-        }
-      );
-      return data.ads;
-    } catch (error) {
-      console.error('Error fetching ads:', error);
-      throw error;
-    }
-  },
-
-};
 
 export const batchApi = {
   getBatches: async (): Promise<Batch[]> => {
@@ -237,30 +435,6 @@ export const batchApi = {
     }
   }
 };
-
-
-// Define the types for the GraphQL response
-export interface SpyderConfig {
-  id: string;
-  name: string;
-  cookie: string;
-  asbd_id: string;
-  lsd: string;
-  doc_id_1: string;
-  doc_id_2: string;
-  raw_data: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-interface SpyderConfigResponse {
-  items: any;
-  pagination: any;
-  spyderConfigs: {
-    items: SpyderConfig[];
-    pagination: PaginationInfo;
-  };
-}
 
 // Define the query
 const GET_SPYDER_CONFIGS = gql`
@@ -404,37 +578,6 @@ const GET_ADS = gql`
           status
           createdAt
           updatedAt
-          batchCountry {
-            id
-            code
-            name
-            createdAt
-            updatedAt
-          }
-          associatedGroup {
-            id
-            name
-            status
-            createdAt
-            updatedAt
-          }
-          ads {
-            id
-            title
-            body
-            original_image_url
-            original_video_url
-            cta_text
-            link_url
-            caption
-            display_format
-            page_name
-            page_id
-            startDate
-            endDate
-            createdAt
-            updatedAt
-          }
         }
       }
       pagination {
@@ -448,74 +591,3 @@ const GET_ADS = gql`
     }
   }
 `;
-
-export const configApi = {
-  getConfigs: async (page: number = 1, pageSize: number = 10, sortBy: string | null = null, sortOrder: string | null = null): Promise<SpyderConfigResponse> => {
-    try {
-      const data = await request<{ spyderConfigs: SpyderConfigResponse }>(
-        GRAPHQL_ENDPOINT,
-        GET_SPYDER_CONFIGS,
-        {
-          pagination: {
-            page,
-            pageSize,
-            sortBy,
-            sortOrder
-          }
-        }
-      );
-      return data.spyderConfigs;
-    } catch (error) {
-      console.error('Error fetching configs:', error);
-      throw error;
-    }
-  },
-
-  createConfig: async (input: any): Promise<SpyderConfig> => {
-    try {
-      console.log(input);
-      const data = await request<{ createSpyderConfig: SpyderConfig }>(
-        GRAPHQL_ENDPOINT,
-        CREATE_SPYDER_CONFIG,
-        { input }
-      );
-      toast.success("Config created successfully");
-      return data.createSpyderConfig;
-    } catch (error) {
-      console.error('Error creating config:', error);
-      toast.error("Failed to create config");
-      throw error;
-    }
-  },
-
-  updateConfig: async (id: string, input: any): Promise<SpyderConfig> => {
-    try {
-      const data = await request<{ updateSpyderConfig: SpyderConfig }>(
-        GRAPHQL_ENDPOINT,
-        UPDATE_SPYDER_CONFIG,
-        { updateSpyderConfigId: id, input }
-      );
-      toast.success("Config updated successfully");
-      return data.updateSpyderConfig;
-    } catch (error) {
-      console.error('Error updating config:', error);
-      toast.error("Failed to update config");
-      throw error;
-    }
-  },
-
-  deleteConfig: async (id: string): Promise<void> => {
-    try {
-      await request(
-        GRAPHQL_ENDPOINT,
-        DELETE_SPYDER_CONFIG,
-        { deleteSpyderConfigId: id }
-      );
-      toast.success("Config deleted successfully");
-    } catch (error) {
-      console.error('Error deleting config:', error);
-      toast.error("Failed to delete config");
-      throw error;
-    }
-  }
-};
