@@ -11,22 +11,15 @@ import {
   ArrowUpRight,
   CheckCircle2,
   XCircle,
-  Clock,
-  ChevronLeft,
-  ChevronRight
+  Clock
 } from 'lucide-react';
+
 import { Button } from '@/components/ui/button';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
-import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { adApi, Ad } from '@/services/api';
-import { formatDate } from '@/lib/utils';
-import { Pagination } from '@/components/ui/pagination';
-import { usePagination } from '@/hooks/usePagination';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const AdStatusBadge = ({ status }: { status: string }) => {
   switch (status) {
@@ -56,272 +49,169 @@ const AdStatusBadge = ({ status }: { status: string }) => {
   }
 };
 
-export default function AdPage() {
+const AdPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedAd, setSelectedAd] = useState<Ad | null>(null);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  
-  const { currentPage, pageSize, handlePageChange, handlePageSizeChange } = usePagination();
 
-  const { data, isLoading, error } = useQuery({
-    queryKey: ['ads', currentPage, pageSize],
-    queryFn: () => adApi.getAds(currentPage, pageSize),
+  const { data: ads, isLoading } = useQuery({
+    queryKey: ['ads'],
+    queryFn: adApi.getAds,
   });
 
-  const filteredAds = data?.items.filter(ad => 
+  const filteredAds = ads?.items?.filter(ad => 
     ad.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
     ad.body.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    ad.vendor.name.toLowerCase().includes(searchTerm.toLowerCase())
-  ) || [];
+    ad.domain.domain.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    ad.company.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
-  if (isLoading) return <div>Loading...</div>;
-  if (error) return <div>Error loading ads</div>;
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    });
+  };
 
   return (
     <DashboardLayout>
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold">Ads</h1>
-          <div className="relative w-64">
-            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search ads..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-8"
-            />
+      <div className="space-y-6">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div>
+            <h1 className="text-2xl font-bold">Advertisements</h1>
+            <p className="text-muted-foreground">
+              Manage and track all advertisement campaigns
+            </p>
           </div>
         </div>
 
-        <div className="rounded-md border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Media</TableHead>
-                <TableHead>Title</TableHead>
-                <TableHead>Vendor</TableHead>
-                <TableHead>Company</TableHead>
-                <TableHead>Domain</TableHead>
-                <TableHead>Language</TableHead>
-                <TableHead>Countries</TableHead>
-                <TableHead>Display Format</TableHead>
-                <TableHead>Start Date</TableHead>
-                <TableHead>End Date</TableHead>
-                <TableHead>Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredAds.map((ad) => (
-                <TableRow key={ad.id}>
-                  <TableCell>
-                    <div className="w-20 h-20 relative rounded-md overflow-hidden">
-                      {ad.original_image_url ? (
-                        <img
-                          src={ad.original_image_url}
-                          alt={ad.title}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : ad.original_video_url ? (
-                        <video
-                          src={ad.original_video_url}
-                          className="w-full h-full object-cover"
-                          muted
-                          loop
-                          playsInline
-                        />
-                      ) : (
-                        <div className="w-full h-full bg-gray-100 flex items-center justify-center">
-                          <span className="text-gray-400 text-sm">No Media</span>
-                        </div>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell>{ad.title}</TableCell>
-                  <TableCell>{ad.vendor.name}</TableCell>
-                  <TableCell>{ad.company.name}</TableCell>
-                  <TableCell>{ad.domain.domain}</TableCell>
-                  <TableCell>{ad.language.name}</TableCell>
-                  <TableCell>
-                    <div className="flex flex-wrap gap-1">
-                      {ad.countries.map((country) => (
-                        <Badge key={country.id} variant="secondary">
-                          {country.name}
-                        </Badge>
-                      ))}
-                    </div>
-                  </TableCell>
-                  <TableCell>{ad.display_format}</TableCell>
-                  <TableCell>{formatDate(ad.startDate)}</TableCell>
-                  <TableCell>{formatDate(ad.endDate)}</TableCell>
-                  <TableCell>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => {
-                        setSelectedAd(ad);
-                        setIsDialogOpen(true);
-                      }}
-                    >
-                      <Eye className="h-4 w-4" />
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
-
-        {data?.pagination && (
-          <div className="mt-4 flex flex-col gap-4">
-            <div className="flex items-center justify-between">
-              <div className="text-sm text-muted-foreground">
-                Showing page {currentPage} of {data.pagination.totalPages}
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">Items per page:</span>
-                <Select
-                  value={pageSize.toString()}
-                  onValueChange={(value) => handlePageSizeChange(Number(value))}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle>All Advertisements</CardTitle>
+            <CardDescription>
+              Track and manage your advertising campaigns
+            </CardDescription>
+            <div className="relative mt-2">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search advertisements..."
+                className="pl-10"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+              {searchTerm && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="absolute right-1 top-1/2 transform -translate-y-1/2 h-7 w-7"
+                  onClick={() => setSearchTerm('')}
                 >
-                  <SelectTrigger className="h-8 w-[70px]">
-                    <SelectValue placeholder={pageSize} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="10">10</SelectItem>
-                    <SelectItem value="20">20</SelectItem>
-                    <SelectItem value="50">50</SelectItem>
-                    <SelectItem value="100">100</SelectItem>
-                  </SelectContent>
-                </Select>
+                  <X className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <div className="text-center py-10">Loading advertisements...</div>
+            ) : filteredAds?.length === 0 ? (
+              <div className="text-center py-10">
+                No advertisements found
+                {searchTerm && (
+                  <div className="mt-2">
+                    <Button 
+                      variant="ghost" 
+                      onClick={() => setSearchTerm('')}
+                      className="text-spyder-teal"
+                    >
+                      Clear search
+                    </Button>
+                  </div>
+                )}
               </div>
-            </div>
-            <div className="flex items-center justify-center space-x-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handlePageChange(currentPage - 1)}
-                disabled={currentPage === 1}
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handlePageChange(currentPage + 1)}
-                disabled={currentPage >= data.pagination.totalPages}
-              >
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Dialog for viewing ad details */}
-      {selectedAd && (
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogContent className="max-w-3xl">
-            <DialogHeader>
-              <DialogTitle>{selectedAd.title}</DialogTitle>
-              <DialogDescription>
-                {selectedAd.vendor.name} - {selectedAd.company.name}
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <h3 className="font-medium mb-2">Media Preview</h3>
-                  <div className="aspect-video rounded-lg overflow-hidden bg-gray-100">
-                    {selectedAd.original_image_url ? (
-                      <img
-                        src={selectedAd.original_image_url}
-                        alt={selectedAd.title}
-                        className="w-full h-full object-contain"
-                      />
-                    ) : selectedAd.original_video_url ? (
-                      <video
-                        src={selectedAd.original_video_url}
-                        className="w-full h-full object-contain"
-                        controls
-                        playsInline
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center">
-                        <span className="text-gray-400">No Media Available</span>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {filteredAds?.map((ad) => (
+                  <Card key={ad.id} className="overflow-hidden card-hover">
+                    <div className="relative h-40 bg-muted">
+                      {
+                        ad.original_image_url && (
+                          <img
+                            src={ad?.original_image_url}
+                            alt={ad.title}
+                            className="w-full h-full object-cover"
+                          />
+                        )
+                      }
+                      {
+                        ad.original_video_url && (
+                          <video
+                            src={ad?.original_video_url}
+                            className="w-full h-full object-cover"
+                          />
+                        )
+                      }
+                        <div className="absolute top-2 right-2">
+                        <span className="bg-white px-2 py-1 rounded-md text-sm">
+                          {ad.language?.name}
+                        </span>
                       </div>
-                    )}
-                  </div>
-                </div>
-                <div className="space-y-4">
-                  <div>
-                    <h3 className="font-medium">Body</h3>
-                    <p className="text-muted-foreground mt-1">{selectedAd.body}</p>
-                  </div>
-                  <div>
-                    <h3 className="font-medium">Call to Action</h3>
-                    <p className="text-muted-foreground mt-1">{selectedAd.ctaText}</p>
-                  </div>
-                  {selectedAd.link_url && (
-                    <div>
-                      <h3 className="font-medium">Link</h3>
-                      <a
-                        href={selectedAd.link_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-blue-600 hover:underline block mt-1"
-                      >
-                        {selectedAd.link_url}
-                      </a>
                     </div>
-                  )}
-                </div>
+                    <CardContent className="p-4">
+                      <h3 className="text-lg font-semibold mb-2 line-clamp-1">{ad.title}</h3>
+                      <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
+                        {ad.body}
+                      </p>
+                      
+                      <div className="grid grid-cols-2 gap-2 text-sm mb-4">
+                        <div className="flex items-center gap-1">
+                          <span className="text-muted-foreground">Domain:</span>
+                            <span>{ad?.domain?.domain}</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <span className="text-muted-foreground">Company:</span>
+                          <span>{ad.company.name}</span>
+                        </div>
+                      </div>
+                      
+                      <div className="grid grid-cols-2 gap-2 text-sm mb-4">
+                        <div className="flex items-center gap-1">
+                          <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+                          <span className="text-muted-foreground">Created:</span>
+                          <span>{formatDate(ad.createdAt)}</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+                          <span className="text-muted-foreground">Updated:</span>
+                          <span>{formatDate(ad.updatedAt)}</span>
+                        </div>
+                      </div>
+                      
+                      <div className="flex justify-between items-center">
+                        <div className="flex items-center gap-4 text-sm">
+                          <div className="flex items-center gap-1">
+                            <span className="text-muted-foreground">Vendor:</span>
+                              <span>{ad.vendor.name}</span>
+                          </div>
+                        </div>
+                        <a
+                          href={ad.link_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-spyder-teal hover:text-spyder-teal/90 text-sm"
+                        >
+                          {ad.ctaText}
+                        </a>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <h3 className="font-medium">Details</h3>
-                  <div className="mt-2 space-y-2">
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Display Format:</span>
-                      <span>{selectedAd.display_format}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Language:</span>
-                      <span>{selectedAd.language.name}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Domain:</span>
-                      <span>{selectedAd.domain.domain}</span>
-                    </div>
-                  </div>
-                </div>
-                <div>
-                  <h3 className="font-medium">Schedule</h3>
-                  <div className="mt-2 space-y-2">
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Start Date:</span>
-                      <span>{formatDate(selectedAd.startDate)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">End Date:</span>
-                      <span>{formatDate(selectedAd.endDate)}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div>
-                <h3 className="font-medium">Target Countries</h3>
-                <div className="flex flex-wrap gap-2 mt-2">
-                  {selectedAd.countries.map((country) => (
-                    <Badge key={country.id} variant="secondary">
-                      {country.name}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
-      )}
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </DashboardLayout>
   );
-}
+};
+
+export default AdPage;

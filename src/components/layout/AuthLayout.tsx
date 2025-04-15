@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Link } from 'react-router-dom';
 
@@ -15,9 +16,9 @@ const AuthLayout: React.FC<AuthLayoutProps> = ({
   type
 }) => {
   return (
-    <div className="min-h-screen flex flex-col md:flex-row overflow-x-hidden">
+    <div className="min-h-screen flex flex-col md:flex-row">
       {/* Left side - Branding */}
-      <div className="w-full md:w-1/2 bg-spyder-dark-blue text-white flex flex-col justify-center p-8 md:p-16 shrink-0">
+      <div className="w-full md:w-1/2 bg-spyder-dark-blue text-white flex flex-col justify-center p-8 md:p-16">
         <div className="max-w-md mx-auto">
           <h1 className="text-3xl md:text-4xl font-bold mb-4">Spyder Config Central</h1>
           <p className="text-lg md:text-xl opacity-90 mb-8">
@@ -62,7 +63,7 @@ const AuthLayout: React.FC<AuthLayoutProps> = ({
       </div>
       
       {/* Right side - Auth form */}
-      <div className="w-full md:w-1/2 bg-white flex items-center justify-center p-8 min-w-0">
+      <div className="w-full md:w-1/2 bg-white flex items-center justify-center p-8">
         <div className="w-full max-w-md space-y-8">
           <div className="text-center">
             <h2 className="text-3xl font-bold text-gray-900">{title}</h2>

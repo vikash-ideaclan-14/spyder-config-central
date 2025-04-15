@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { 
@@ -55,9 +56,9 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
   ];
 
   return (
-    <div className="flex min-h-screen bg-spyder-light-gray dark:bg-gray-900 overflow-x-hidden">
+    <div className="flex min-h-screen bg-spyder-light-gray dark:bg-gray-900">
       {/* Desktop Sidebar */}
-      <aside className="hidden md:flex md:w-64 flex-col bg-spyder-dark-blue shrink-0">
+      <aside className="hidden md:flex md:w-64 flex-col bg-spyder-dark-blue">
         <div className="p-4 flex items-center justify-center border-b border-spyder-dark-blue/50">
           <h1 className="text-white text-xl font-bold">Spyder Config</h1>
         </div>
@@ -131,7 +132,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
       </Sheet>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col">
         {/* Header */}
         <header className="bg-white dark:bg-gray-800 shadow-sm px-4 py-3 flex items-center justify-between">
           <div className="flex items-center">
@@ -161,9 +162,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) => {
 
         {/* Page Content */}
         <main className="flex-1 p-4 md:p-6 overflow-auto">
-          <div className="max-w-full">
-            {children}
-          </div>
+          {children}
         </main>
 
         {/* Footer */}

@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
@@ -11,12 +12,12 @@ import DashboardLayout from '@/components/layout/DashboardLayout';
 const Dashboard: React.FC = () => {
   const { data: configs } = useQuery({
     queryKey: ['configs'],
-    queryFn: () => configApi.getConfigs(1, 20, 'createdAt', 'desc'),
+    queryFn: configApi.getConfigs,
   });
 
   const { data: ads } = useQuery({
     queryKey: ['ads'],
-    queryFn: () => adApi.getAds(1, 20, 'createdAt', 'desc'),
+    queryFn: adApi.getAds,
   });
 
   const { data: batches } = useQuery({
@@ -44,12 +45,12 @@ const Dashboard: React.FC = () => {
 
   return (
     <DashboardLayout>
-      <div className="flex flex-col gap-6 max-w-full overflow-x-hidden">
+      <div className="flex flex-col gap-6">
         <h1 className="text-2xl font-bold">Dashboard Overview</h1>
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <Card className="w-full">
+          <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <div className="space-y-1">
                 <CardTitle className="text-sm font-medium">Total Configurations</CardTitle>
@@ -65,7 +66,7 @@ const Dashboard: React.FC = () => {
             </CardContent>
           </Card>
 
-          <Card className="w-full">
+          <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <div className="space-y-1">
                 <CardTitle className="text-sm font-medium">Advertisements</CardTitle>
@@ -81,7 +82,7 @@ const Dashboard: React.FC = () => {
             </CardContent>
           </Card>
 
-          <Card className="w-full">
+          <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <div className="space-y-1">
                 <CardTitle className="text-sm font-medium">Spyder Batches</CardTitle>
@@ -90,7 +91,7 @@ const Dashboard: React.FC = () => {
               <Layers className="h-5 w-5 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold">{batches?.length || 0}</div>
+                <div className="text-3xl font-bold">{batches?.length || 0}</div>
               <Link to="/batches" className="text-sm text-spyder-teal flex items-center mt-2 hover:underline">
                 Manage Batches <ArrowRight className="h-4 w-4 ml-1" />
               </Link>
@@ -101,7 +102,7 @@ const Dashboard: React.FC = () => {
         {/* Charts */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Ad Clicks/Impressions Chart */}
-          <Card className="w-full">
+          <Card>
             <CardHeader>
               <CardTitle>Ad Performance</CardTitle>
               <CardDescription>Clicks and impressions for top ads</CardDescription>
@@ -124,7 +125,7 @@ const Dashboard: React.FC = () => {
           </Card>
 
           {/* Ad Status Pie Chart */}
-          <Card className="w-full">
+          <Card>
             <CardHeader>
               <CardTitle>Ad Status Distribution</CardTitle>
               <CardDescription>Distribution of ads by status</CardDescription>
@@ -154,7 +155,7 @@ const Dashboard: React.FC = () => {
         </div>
 
         {/* Recent Activity */}
-        <Card className="w-full">
+        <Card>
           <CardHeader>
             <CardTitle>System Overview</CardTitle>
             <CardDescription>Current system status and health</CardDescription>
@@ -184,28 +185,28 @@ const Dashboard: React.FC = () => {
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm">
                     <span>Active:</span>
-                    <span className="font-medium">
-                      {ads?.items.filter(ad => ad.status === 'active').length || 0}
-                    </span>
+                    {/* <span className="font-medium">
+                      {ads?.filter(ad => ad.status === 'active').length || 0}
+                    </span> */}
                   </div>
                   <div className="flex justify-between text-sm">
                     <span>Total Clicks:</span>
-                    <span className="font-medium">
-                      {/* {ads?.items.reduce((sum, ad) => sum + (ad.clicks || 0), 0) || 0} */}
-                    </span>
+                    {/* <span className="font-medium">
+                      {ads?.reduce((sum, ad) => sum + ad.clicks, 0) || 0}
+                    </span> */}
                   </div>
-                  <div className="flex justify-between text-sm">
-                    {/* <span>Conversion Rate:</span> */}
-                    {/* <span className="font-medium"> */}
-                      {/* {ads?.items.length
+                  {/* <div className="flex justify-between text-sm">
+                    <span>Conversion Rate:</span>
+                    <span className="font-medium">
+                      {ads?.length
                         ? (
-                            // (ads.items.reduce((sum, ad) => sum + (ad.clicks || 0), 0) /
-                              ads.items.reduce((sum, ad) => sum + (ad.impressions || 0), 0)) *
+                            (ads.reduce((sum, ad) => sum + ad.clicks, 0) /
+                              ads.reduce((sum, ad) => sum + ad.impressions, 0)) *
                             100
                           ).toFixed(2) + '%'
-                        : '0%'} */}
-                    {/* </span> */}
-                  </div>
+                        : '0%'}
+                    </span>
+                  </div> */}
                 </div>
               </div>
 
