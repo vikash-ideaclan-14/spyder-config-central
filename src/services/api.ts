@@ -132,12 +132,29 @@ interface DeleteConfigResponse {
 }
 
 // API implementation
+export interface AdFilters {
+  batchId?: string | null;
+  companyName?: string | null;
+  countryName?: string | null;
+  domainName?: string | null;
+  languageName?: string | null;
+  vendorName?: string | null;
+}
+
+export interface GetAdsParams {
+  pagination: {
+    page: number;
+    pageSize: number;
+  };
+  filters?: AdFilters;
+}
+
 export const adApi = {
-  getAds: async (page: number = 1, pageSize: number = 10): Promise<AdsResponse> => {
+  getAds: async ({ pagination, filters = {} }: GetAdsParams): Promise<AdsResponse> => {
     try {
       const query = gql`
-        query GetAds($pagination: PaginationInput!) {
-          ads(pagination: $pagination) {
+        query GetAds($pagination: PaginationInput!, $filters: adsFilterInput) {
+          ads(pagination: $pagination, filters: $filters) {
             items {
               id
               title
@@ -195,9 +212,14 @@ export const adApi = {
       `;
 
       const variables = { 
-        pagination: {
-          page,
-          pageSize
+        pagination,
+        filters: {
+          batchId: filters.batchId,
+          companyName: filters.companyName,
+          countryName: filters.countryName,
+          domainName: filters.domainName,
+          languageName: filters.languageName,
+          vendorName: filters.vendorName
         }
       };
       const response = await request<AdsResponse>(GRAPHQL_ENDPOINT, query, variables);

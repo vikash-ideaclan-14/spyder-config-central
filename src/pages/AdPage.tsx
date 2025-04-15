@@ -35,6 +35,7 @@ import { Pagination } from '@/components/ui/pagination';
 import { usePagination } from '@/hooks/usePagination';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Loader } from '@/components/ui/loader';
 
 interface VideoState {
   isPlaying: boolean;
@@ -80,11 +81,30 @@ export default function AdPage() {
   const [videoStates, setVideoStates] = useState<Record<string, VideoState>>({});
   const videoRefs = useRef<Record<string, HTMLVideoElement | null>>({});
   
+  // Add filter states
+  const [filters, setFilters] = useState({
+    batchId: null,
+    companyName: null,
+    countryName: null,
+    domainName: null,
+    languageName: null,
+    vendorName: null
+  });
+
+  const [filterKey, setFilterKey] = useState<string>('batchId');
+  const [filterValue, setFilterValue] = useState<string>('');
+  const [appliedFilters, setAppliedFilters] = useState<Record<string, string | null>>({});
+
   const { currentPage, pageSize, handlePageChange, handlePageSizeChange } = usePagination();
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ['ads', currentPage, pageSize],
-    queryFn: () => adApi.getAds(currentPage, pageSize),
+    queryKey: ['ads', currentPage, pageSize, filters],
+    queryFn: () => adApi.getAds({
+      pagination: { page: currentPage, pageSize },
+      filters
+    }),
+    placeholderData: (previousData) => previousData,
+    staleTime: 5000,
   });
 
   // Cleanup video refs on unmount
@@ -149,13 +169,66 @@ export default function AdPage() {
       video.currentTime = percent * video.duration;
     }
   };
+
+  const handleApplyFilter = () => {
+    if (filterValue.trim()) {
+      setAppliedFilters(prev => ({
+        ...prev,
+        [filterKey]: filterValue
+      }));
+      setFilters(prev => ({
+        ...prev,
+        [filterKey]: filterValue
+      }));
+      setFilterValue('');
+    }
+  };
+
+  const handleRemoveFilter = (key: string) => {
+    setAppliedFilters(prev => {
+      const newFilters = { ...prev };
+      delete newFilters[key];
+      return newFilters;
+    });
+    setFilters(prev => ({
+      ...prev,
+      [key]: null
+    }));
+  };
+
+  const handleClearAllFilters = () => {
+    setAppliedFilters({});
+    setFilters({
+      batchId: null,
+      companyName: null,
+      countryName: null,
+      domainName: null,
+      languageName: null,
+      vendorName: null
+    });
+  };
+
+  const filterOptions = [
+    { value: 'batchId', label: 'Batch ID' },
+    { value: 'companyName', label: 'Company Name' },
+    { value: 'countryName', label: 'Country Name' },
+    { value: 'domainName', label: 'Domain Name' },
+    { value: 'languageName', label: 'Language Name' },
+    { value: 'vendorName', label: 'Vendor Name' }
+  ];
+
   const filteredAds = data?.ads.items.filter(ad => 
     ad.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
     ad.body.toLowerCase().includes(searchTerm.toLowerCase()) ||
     ad.vendor.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     ad.batches.some(batch => batch.id.toLowerCase().includes(searchTerm.toLowerCase()))
   ) || [];
-  if (isLoading) return <div>Loading...</div>;
+
+  if (isLoading) return (
+    <DashboardLayout>
+      <Loader className="min-h-[calc(100vh-4rem)]" size="lg" />
+    </DashboardLayout>
+  );
   if (error) return <div>Error loading ads</div>;
   
   return (
@@ -163,171 +236,244 @@ export default function AdPage() {
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold">Ads</h1>
-          <div className="relative w-64">
-            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search ads..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-8"
-            />
+          <div className="flex items-center gap-4">
+            <div className="relative w-64">
+              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search ads..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-8"
+              />
+            </div>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-          {filteredAds.map((ad) => (
-            <Card key={ad.id} className="overflow-hidden group">
-              <div className="aspect-video relative bg-gray-100">
-                {ad.original_image_url ? (
-                  <div className="relative aspect-video">
-                    <img
-                      src={ad.original_image_url}
-                      alt={ad.title}
-                      className="w-full h-full object-cover cursor-pointer"
-                      onClick={() => {
-                        setFullscreenImage(ad.original_image_url);
-                        setIsImageFullscreen(true);
-                      }}
-                    />
-                    <div 
-                      className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer"
-                      onClick={() => {
-                        setFullscreenImage(ad.original_image_url);
-                        setIsImageFullscreen(true);
-                      }}
-                    >
-                      <ZoomIn className="h-8 w-8 text-white" />
-                    </div>
-                  </div>
-                ) : ad.original_video_url ? (
-                  <div className="relative aspect-video group">
-                    <video
-                      ref={el => videoRefs.current[ad.id] = el}
-                      src={ad.original_video_url}
-                      className="w-full h-full object-cover"
-                      playsInline
-                      poster={ad.original_image_url}
-                      onTimeUpdate={(e) => handleVideoTimeUpdate(ad.id, e)}
-                      onLoadedMetadata={(e) => {
-                        const video = e.currentTarget;
-                        setVideoStates(prev => ({
-                          ...prev,
-                          [ad.id]: {
-                            isPlaying: false,
-                            isMuted: video.muted,
-                            currentTime: 0,
-                            duration: video.duration
-                          }
-                        }));
-                      }}
-                    />
-                    <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
-                      <div className="flex items-center gap-2">
-                        <button
-                          className="p-2 rounded-full bg-black/50 hover:bg-black/70 text-white"
-                          onClick={() => handleVideoPlay(ad.id)}
-                        >
-                          {videoStates[ad.id]?.isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-                        </button>
-                        <button
-                          className="p-2 rounded-full bg-black/50 hover:bg-black/70 text-white"
-                          onClick={() => handleVideoMute(ad.id)}
-                        >
-                          {videoStates[ad.id]?.isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
-                        </button>
-                        <div 
-                          className="flex-1 h-1 bg-gray-600 rounded-full overflow-hidden cursor-pointer"
-                          onClick={(e) => handleVideoSeek(ad.id, e)}
-                        >
-                          <div 
-                            className="progress-bar h-full bg-white transition-all duration-100"
-                            style={{ 
-                              width: `${(videoStates[ad.id]?.currentTime || 0) / (videoStates[ad.id]?.duration || 1) * 100}%` 
-                            }}
-                          />
-                        </div>
-                        <button
-                          className="p-2 rounded-full bg-black/50 hover:bg-black/70 text-white"
-                          onClick={() => videoRefs.current[ad.id]?.requestFullscreen()}
-                        >
-                          <Maximize2 className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center">
-                    <span className="text-gray-400">No Media Available</span>
-                  </div>
-                )}
-              </div>
-              <CardContent className="p-4 space-y-3">
-                <div>
-                  <h3 className="font-medium line-clamp-2">{ad.title}</h3>
-                  <p className="text-sm text-muted-foreground line-clamp-2 mt-1">{ad.body}</p>
-                </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Vendor:</span>
-                  <span>{ad.vendor.name}</span>
-                </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Company:</span>
-                  <span>{ad.company.name}</span>
-                </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Format:</span>
-                  <span>{ad.display_format}</span>
-                </div>
-                <div className="flex flex-wrap justify-between gap-1">
-                <span className="text-muted-foreground">Countries:</span>
-                  {ad.countries.map((country) => (
-                    <Badge key={country.id} variant="secondary">
-                      {country.name}
-                    </Badge>
-                  ))}
-                </div>
-                <div className="flex flex-wrap justify-between gap-1">
-                <span className="text-muted-foreground">Batch:</span>
-                  {ad.batches.map((batch) => (
-                    <Badge key={batch.id} variant="secondary">
-                      {batch.id}
-                    </Badge>
-                  ))}
-                </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Language:</span>
-                  <span>{ad.language.name}</span>
-                </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Domain:</span>
-                  <span className="truncate">{ad.domain.domain}</span>
-                </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">Period:</span>
-                  <span className="text-right">
-                    {formatDate(ad.startDate)} - {formatDate(ad.endDate)}
+        {/* Filter Controls */}
+        <div className="flex flex-col gap-4">
+          <div className="flex items-center gap-4">
+            <Select
+              value={filterKey}
+              onValueChange={setFilterKey}
+            >
+              <SelectTrigger className="w-[200px]">
+                <SelectValue placeholder="Select filter type" />
+              </SelectTrigger>
+              <SelectContent>
+                {filterOptions.map(option => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Input
+              placeholder={`Enter ${filterOptions.find(opt => opt.value === filterKey)?.label.toLowerCase()}`}
+              value={filterValue}
+              onChange={(e) => setFilterValue(e.target.value)}
+              className="w-[300px]"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  handleApplyFilter();
+                }
+              }}
+            />
+
+            <Button onClick={handleApplyFilter}>
+              Apply Filter
+            </Button>
+
+            <Button
+              variant="outline"
+              onClick={handleClearAllFilters}
+            >
+              Clear All Filters
+            </Button>
+          </div>
+
+          {/* Applied Filters */}
+          {Object.keys(appliedFilters).length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {Object.entries(appliedFilters).map(([key, value]) => (
+                <div
+                  key={key}
+                  className="flex items-center gap-2 bg-gray-100 dark:bg-gray-800 px-3 py-1 rounded-full"
+                >
+                  <span className="text-sm">
+                    {filterOptions.find(opt => opt.value === key)?.label}: {value}
                   </span>
-                </div>
-                <div className="pt-2">
                   <Button
-                    variant="outline"
-                    className="w-full"
-                    onClick={() => {
-                      if (ad.link_url) {
-                        const newWindow = window.open(ad.link_url, '_blank');
-                        if (newWindow) {
-                          newWindow.opener = null;
-                        }
-                      }
-                    }}
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 w-6 p-0"
+                    onClick={() => handleRemoveFilter(key)}
                   >
-                    <Eye className="h-4 w-4 mr-2" />
-                    View ad
+                    <X className="h-4 w-4" />
                   </Button>
                 </div>
-              </CardContent>
-            </Card>
-          ))}
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="relative">
+          {isLoading && <Loader className="absolute inset-0 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm z-10" size="md" />}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {filteredAds.map((ad) => (
+              <Card key={ad.id} className="overflow-hidden group">
+                <div className="aspect-video relative bg-gray-100">
+                  {ad.original_image_url ? (
+                    <div className="relative aspect-video">
+                      <img
+                        src={ad.original_image_url}
+                        alt={ad.title}
+                        className="w-full h-full object-cover cursor-pointer"
+                        onClick={() => {
+                          setFullscreenImage(ad.original_image_url);
+                          setIsImageFullscreen(true);
+                        }}
+                      />
+                      <div 
+                        className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer"
+                        onClick={() => {
+                          setFullscreenImage(ad.original_image_url);
+                          setIsImageFullscreen(true);
+                        }}
+                      >
+                        <ZoomIn className="h-8 w-8 text-white" />
+                      </div>
+                    </div>
+                  ) : ad.original_video_url ? (
+                    <div className="relative aspect-video group">
+                      <video
+                        ref={el => videoRefs.current[ad.id] = el}
+                        src={ad.original_video_url}
+                        className="w-full h-full object-cover"
+                        playsInline
+                        poster={ad.original_image_url}
+                        onTimeUpdate={(e) => handleVideoTimeUpdate(ad.id, e)}
+                        onLoadedMetadata={(e) => {
+                          const video = e.currentTarget;
+                          setVideoStates(prev => ({
+                            ...prev,
+                            [ad.id]: {
+                              isPlaying: false,
+                              isMuted: video.muted,
+                              currentTime: 0,
+                              duration: video.duration
+                            }
+                          }));
+                        }}
+                      />
+                      <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="flex items-center gap-2">
+                          <button
+                            className="p-2 rounded-full bg-black/50 hover:bg-black/70 text-white"
+                            onClick={() => handleVideoPlay(ad.id)}
+                          >
+                            {videoStates[ad.id]?.isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+                          </button>
+                          <button
+                            className="p-2 rounded-full bg-black/50 hover:bg-black/70 text-white"
+                            onClick={() => handleVideoMute(ad.id)}
+                          >
+                            {videoStates[ad.id]?.isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+                          </button>
+                          <div 
+                            className="flex-1 h-1 bg-gray-600 rounded-full overflow-hidden cursor-pointer"
+                            onClick={(e) => handleVideoSeek(ad.id, e)}
+                          >
+                            <div 
+                              className="progress-bar h-full bg-white transition-all duration-100"
+                              style={{ 
+                                width: `${(videoStates[ad.id]?.currentTime || 0) / (videoStates[ad.id]?.duration || 1) * 100}%` 
+                              }}
+                            />
+                          </div>
+                          <button
+                            className="p-2 rounded-full bg-black/50 hover:bg-black/70 text-white"
+                            onClick={() => videoRefs.current[ad.id]?.requestFullscreen()}
+                          >
+                            <Maximize2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <span className="text-gray-400">No Media Available</span>
+                    </div>
+                  )}
+                </div>
+                <CardContent className="p-4 space-y-3">
+                  <div>
+                    <h3 className="font-medium line-clamp-2">{ad.title}</h3>
+                    <p className="text-sm text-muted-foreground line-clamp-2 mt-1">{ad.body}</p>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Vendor:</span>
+                    <span>{ad.vendor.name}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Company:</span>
+                    <span>{ad.company.name}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Format:</span>
+                    <span>{ad.display_format}</span>
+                  </div>
+                  <div className="flex flex-wrap justify-between gap-1">
+                    <span className="text-muted-foreground">Countries:</span>
+                    {ad.countries.map((country) => (
+                      <Badge key={country.id} variant="secondary">
+                        {country.name}
+                      </Badge>
+                    ))}
+                  </div>
+                  <div className="flex flex-wrap justify-between gap-1">
+                    <span className="text-muted-foreground">Batch:</span>
+                    {ad.batches.map((batch) => (
+                      <Badge key={batch.id} variant="secondary">
+                        {batch.id}
+                      </Badge>
+                    ))}
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Language:</span>
+                    <span>{ad.language.name}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Domain:</span>
+                    <span className="truncate">{ad.domain.domain}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Period:</span>
+                    <span className="text-right">
+                      {formatDate(ad.startDate)} - {formatDate(ad.endDate)}
+                    </span>
+                  </div>
+                  <div className="pt-2">
+                    <Button
+                      variant="outline"
+                      className="w-full"
+                      onClick={() => {
+                        if (ad.link_url) {
+                          const newWindow = window.open(ad.link_url, '_blank');
+                          if (newWindow) {
+                            newWindow.opener = null;
+                          }
+                        }
+                      }}
+                    >
+                      <Eye className="h-4 w-4 mr-2" />
+                      View ad
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
         </div>
 
         {data?.ads.pagination && (
@@ -374,137 +520,31 @@ export default function AdPage() {
             </div>
           </div>
         )}
-      </div>
 
-      {/* Dialog for viewing ad details */}
-      {selectedAd && (
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogContent className="max-w-3xl">
-            <DialogHeader>
-              <DialogTitle>{selectedAd.title}</DialogTitle>
-              <DialogDescription>
-                {selectedAd.vendor.name} - {selectedAd.company.name}
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <h3 className="font-medium mb-2">Media Preview</h3>
-                  <div className="aspect-video rounded-lg overflow-hidden bg-gray-100">
-                    {selectedAd.original_image_url ? (
-                      <img
-                        src={selectedAd.original_image_url}
-                        alt={selectedAd.title}
-                        className="w-full h-full object-contain"
-                      />
-                    ) : selectedAd.original_video_url ? (
-                      <video
-                        src={selectedAd.original_video_url}
-                        className="w-full h-full object-contain"
-                        controls
-                        playsInline
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center">
-                        <span className="text-gray-400">No Media Available</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-                <div className="space-y-4">
-                  <div>
-                    <h3 className="font-medium">Body</h3>
-                    <p className="text-muted-foreground mt-1">{selectedAd.body}</p>
-                  </div>
-                  <div>
-                    <h3 className="font-medium">Call to Action</h3>
-                    <p className="text-muted-foreground mt-1">{selectedAd.ctaText}</p>
-                  </div>
-                  {selectedAd.link_url && (
-                    <div>
-                      <h3 className="font-medium">Link</h3>
-                      <a
-                        href={selectedAd.link_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-blue-600 hover:underline block mt-1"
-                      >
-                        {selectedAd.link_url}
-                      </a>
-                    </div>
-                  )}
-                </div>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <h3 className="font-medium">Details</h3>
-                  <div className="mt-2 space-y-2">
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Display Format:</span>
-                      <span>{selectedAd.display_format}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Language:</span>
-                      <span>{selectedAd.language.name}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Domain:</span>
-                      <span>{selectedAd.domain.domain}</span>
-                    </div>
-                  </div>
-                </div>
-                <div>
-                  <h3 className="font-medium">Schedule</h3>
-                  <div className="mt-2 space-y-2">
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Start Date:</span>
-                      <span>{formatDate(selectedAd.startDate)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">End Date:</span>
-                      <span>{formatDate(selectedAd.endDate)}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div>
-                <h3 className="font-medium">Target Countries</h3>
-                <div className="flex flex-wrap gap-2 mt-2">
-                  {selectedAd.countries.map((country) => (
-                    <Badge key={country.id} variant="secondary">
-                      {country.name}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
-      )}
-
-      {/* Fullscreen Image View */}
-      {isImageFullscreen && fullscreenImage && (
-        <div 
-          className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center"
-          onClick={() => setIsImageFullscreen(false)}
-        >
-          <button
-            className="absolute top-4 right-4 p-2 rounded-full bg-black/50 hover:bg-black/70 text-white"
-            onClick={(e) => {
-              e.stopPropagation();
-              setIsImageFullscreen(false);
-            }}
+        {/* Fullscreen Image View */}
+        {isImageFullscreen && fullscreenImage && (
+          <div 
+            className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center"
+            onClick={() => setIsImageFullscreen(false)}
           >
-            <CloseIcon className="h-6 w-6" />
-          </button>
-          <img
-            src={fullscreenImage}
-            alt="Fullscreen view"
-            className="max-h-[90vh] max-w-[90vw] object-contain"
-            onClick={(e) => e.stopPropagation()}
-          />
-        </div>
-      )}
+            <button
+              className="absolute top-4 right-4 p-2 rounded-full bg-black/50 hover:bg-black/70 text-white"
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsImageFullscreen(false);
+              }}
+            >
+              <X className="h-6 w-6" />
+            </button>
+            <img
+              src={fullscreenImage}
+              alt="Fullscreen view"
+              className="max-h-[90vh] max-w-[90vw] object-contain"
+              onClick={(e) => e.stopPropagation()}
+            />
+          </div>
+        )}
+      </div>
     </DashboardLayout>
   );
 }

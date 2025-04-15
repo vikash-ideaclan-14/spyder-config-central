@@ -56,6 +56,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Loader } from '@/components/ui/loader';
 
 const configFormSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
@@ -228,6 +229,7 @@ const ConfigPage: React.FC = () => {
     });
     setIsEditDialogOpen(true);
   };
+
   const filteredConfigs = data?.spyderConfigs.items.filter(config => 
     config.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     config.cookie.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -236,6 +238,7 @@ const ConfigPage: React.FC = () => {
     config.doc_id_1.toLowerCase().includes(searchTerm.toLowerCase()) ||
     config.doc_id_2.toLowerCase().includes(searchTerm.toLowerCase())
   ) || [];
+
   if (error) {
     return (
       <DashboardLayout>
@@ -407,7 +410,7 @@ const ConfigPage: React.FC = () => {
             </CardHeader>
             <CardContent className="flex-grow p-0">
               {isLoading ? (
-                <div className="text-center py-10">Loading configurations...</div>
+                <Loader className="min-h-[calc(100vh-4rem)]" size="lg" />
               ) : filteredConfigs?.length === 0 ? (
                 <div className="text-center py-10">
                   No configurations found

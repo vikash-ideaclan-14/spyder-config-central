@@ -16,7 +16,10 @@ const Dashboard: React.FC = () => {
 
   const { data: ads } = useQuery({
     queryKey: ['ads'],
-    queryFn: () => adApi.getAds(),
+    queryFn: () => adApi.getAds({
+      pagination: { page: 1, pageSize: 10 },
+      filters: {}
+    }),
   });
 
   const { data: batches } = useQuery({
