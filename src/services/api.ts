@@ -72,7 +72,7 @@ export interface Ad extends BaseEntity {
   domain: Domain;
   language: Language;
   countries: Country[];
-  batch: Batch;
+  batches: Batch[];
   display_format: string;
   startDate: string;
   endDate: string;

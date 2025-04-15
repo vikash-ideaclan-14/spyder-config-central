@@ -152,12 +152,12 @@ export default function AdPage() {
   const filteredAds = data?.ads.items.filter(ad => 
     ad.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
     ad.body.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    ad.vendor.name.toLowerCase().includes(searchTerm.toLowerCase())
+    ad.vendor.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    ad.batches.some(batch => batch.id.toLowerCase().includes(searchTerm.toLowerCase()))
   ) || [];
-
   if (isLoading) return <div>Loading...</div>;
   if (error) return <div>Error loading ads</div>;
-
+  
   return (
     <DashboardLayout>
       <div className="space-y-4">
@@ -278,10 +278,19 @@ export default function AdPage() {
                   <span className="text-muted-foreground">Format:</span>
                   <span>{ad.display_format}</span>
                 </div>
-                <div className="flex flex-wrap gap-1">
+                <div className="flex flex-wrap justify-between gap-1">
+                <span className="text-muted-foreground">Countries:</span>
                   {ad.countries.map((country) => (
                     <Badge key={country.id} variant="secondary">
                       {country.name}
+                    </Badge>
+                  ))}
+                </div>
+                <div className="flex flex-wrap justify-between gap-1">
+                <span className="text-muted-foreground">Batch:</span>
+                  {ad.batches.map((batch) => (
+                    <Badge key={batch.id} variant="secondary">
+                      {batch.id}
                     </Badge>
                   ))}
                 </div>
