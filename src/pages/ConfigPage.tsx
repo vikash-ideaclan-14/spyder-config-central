@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Search, X, Calendar, Plus, Pencil, Trash2 } from 'lucide-react';
+import { Search, X, Calendar, Plus, Pencil, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -34,12 +34,24 @@ import {
 } from "@/components/ui/table";
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { configApi, SpyderConfig } from '@/services/api';
+import { formatDate } from '@/lib/utils';
+import { Pagination } from '@/components/ui/pagination';
+import { usePagination } from '@/hooks/usePagination';
+import { toast } from 'sonner';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const ConfigPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [selectedConfig, setSelectedConfig] = useState<SpyderConfig | null>(null);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [newConfig, setNewConfig] = useState({
     name: '',
     cookie: '',
@@ -49,18 +61,21 @@ const ConfigPage: React.FC = () => {
     doc_id_2: '',
     raw_data: '',
   });
+
+  const { currentPage, pageSize, handlePageChange, handlePageSizeChange } = usePagination();
+
   const queryClient = useQueryClient();
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ['spyderConfigs'],
-    queryFn: configApi.getConfigs,
+    queryKey: ['configs', currentPage, pageSize],
+    queryFn: () => configApi.getConfigs(currentPage, pageSize),
   });
 
   const createMutation = useMutation({
     mutationFn: configApi.createConfig,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['spyderConfigs'] });
-      setIsCreateDialogOpen(false);
+      queryClient.invalidateQueries({ queryKey: ['configs'] });
+      setIsDialogOpen(false);
       setNewConfig({
         name: '',
         cookie: '',
@@ -70,23 +85,37 @@ const ConfigPage: React.FC = () => {
         doc_id_2: '',
         raw_data: '',
       });
+      toast.success('Config created successfully');
     },
+    onError: (error) => {
+      toast.error('Failed to create config');
+    }
   });
 
   const updateMutation = useMutation({
     mutationFn: ({ id, input }: { id: string; input: any }) => configApi.updateConfig(id, input),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['spyderConfigs'] });
+      queryClient.invalidateQueries({ queryKey: ['configs'] });
       setIsEditDialogOpen(false);
       setSelectedConfig(null);
+      toast.success('Config updated successfully');
     },
+    onError: (error) => {
+      toast.error('Failed to update config');
+    }
   });
 
   const deleteMutation = useMutation({
     mutationFn: configApi.deleteConfig,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['spyderConfigs'] });
+      queryClient.invalidateQueries({ queryKey: ['configs'] });
+      setIsDeleteDialogOpen(false);
+      setSelectedConfig(null);
+      toast.success('Config deleted successfully');
     },
+    onError: (error) => {
+      toast.error('Failed to delete config');
+    }
   });
 
   const handleCreateConfig = () => {
@@ -95,7 +124,7 @@ const ConfigPage: React.FC = () => {
 
   const handleUpdateConfig = () => {
     if (selectedConfig) {
-      updateMutation.mutate({ id: selectedConfig.id, input: newConfig });
+      updateMutation.mutate({ id: selectedConfig.id, input: selectedConfig });
     }
   };
 
@@ -116,23 +145,14 @@ const ConfigPage: React.FC = () => {
     });
     setIsEditDialogOpen(true);
   };
-
-  const filteredConfigs = data?.items.filter(config => 
+  const filteredConfigs = data?.items?.filter(config => 
     config.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     config.cookie.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    config.asbd_id.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  const formatDate = (timestamp: string | number) => {
-    const timeInMs = typeof timestamp === 'string' ? parseInt(timestamp) : timestamp;
-    return new Date(timeInMs).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
+    config.asbd_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    config.lsd.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    config.doc_id_1.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    config.doc_id_2.toLowerCase().includes(searchTerm.toLowerCase())
+  ) || [];
 
   if (error) {
     return (
@@ -146,7 +166,7 @@ const ConfigPage: React.FC = () => {
 
   return (
     <DashboardLayout>
-      <div className="flex flex-col min-h-[calc(100vh-4rem)]">
+      <div className="flex flex-col min-h-[calc(100vh-4rem)] max-w-full overflow-x-hidden">
         <div className="flex-grow space-y-6">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
@@ -155,9 +175,9 @@ const ConfigPage: React.FC = () => {
                 Manage and track all spyder configurations
               </p>
             </div>
-            <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               <DialogTrigger asChild>
-                <Button>
+                <Button className="bg-spyder-teal hover:bg-spyder-teal/90">
                   <Plus className="mr-2 h-4 w-4" />
                   Create Config
                 </Button>
@@ -170,41 +190,48 @@ const ConfigPage: React.FC = () => {
                   </DialogDescription>
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
-                  <div className="grid gap-2">
+                  <div className="grid gap-3">
                     <Input
                       placeholder="Name"
                       value={newConfig.name}
                       onChange={(e) => setNewConfig({ ...newConfig, name: e.target.value })}
+                      className="w-full"
                     />
                     <Input
                       placeholder="Cookie"
                       value={newConfig.cookie}
                       onChange={(e) => setNewConfig({ ...newConfig, cookie: e.target.value })}
+                      className="w-full"
                     />
                     <Input
                       placeholder="ASBD ID"
                       value={newConfig.asbd_id}
                       onChange={(e) => setNewConfig({ ...newConfig, asbd_id: e.target.value })}
+                      className="w-full"
                     />
                     <Input
                       placeholder="LSD"
                       value={newConfig.lsd}
                       onChange={(e) => setNewConfig({ ...newConfig, lsd: e.target.value })}
+                      className="w-full"
                     />
                     <Input
                       placeholder="Doc ID 1"
                       value={newConfig.doc_id_1}
                       onChange={(e) => setNewConfig({ ...newConfig, doc_id_1: e.target.value })}
+                      className="w-full"
                     />
                     <Input
                       placeholder="Doc ID 2"
                       value={newConfig.doc_id_2}
                       onChange={(e) => setNewConfig({ ...newConfig, doc_id_2: e.target.value })}
+                      className="w-full"
                     />
                     <Input
                       placeholder="Raw Data"
                       value={newConfig.raw_data}
                       onChange={(e) => setNewConfig({ ...newConfig, raw_data: e.target.value })}
+                      className="w-full"
                     />
                   </div>
                 </div>
@@ -213,6 +240,7 @@ const ConfigPage: React.FC = () => {
                     type="submit"
                     onClick={handleCreateConfig}
                     disabled={createMutation.isPending}
+                    className="bg-spyder-teal hover:bg-spyder-teal/90"
                   >
                     {createMutation.isPending ? 'Creating...' : 'Create Config'}
                   </Button>
@@ -227,7 +255,7 @@ const ConfigPage: React.FC = () => {
               <CardDescription>
                 View and manage your spyder configurations
               </CardDescription>
-              <div className="relative mt-2">
+              <div className="relative mt-2 max-w-md">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   placeholder="Search configurations..."
@@ -267,168 +295,213 @@ const ConfigPage: React.FC = () => {
                 </div>
               ) : (
                 <div className="rounded-md border h-full overflow-auto">
-                  <Table>
-                    <TableHeader className="sticky top-0 bg-white dark:bg-gray-900">
-                      <TableRow>
-                        <TableHead className="w-[200px]">Name</TableHead>
-                        <TableHead className="w-[250px]">Cookie</TableHead>
-                        <TableHead className="w-[150px]">ASBD ID</TableHead>
-                        <TableHead className="w-[150px]">LSD</TableHead>
-                        <TableHead className="w-[150px]">Doc ID 1</TableHead>
-                        <TableHead className="w-[150px]">Doc ID 2</TableHead>
-                        <TableHead className="w-[180px]">Created At</TableHead>
-                        <TableHead className="w-[180px]">Updated At</TableHead>
-                        <TableHead className="w-[100px]">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filteredConfigs?.map((config) => (
-                        <TableRow key={config.id} className="h-16">
-                          <TableCell className="font-medium whitespace-nowrap">{config.name}</TableCell>
-                          <TableCell className="max-w-[250px] truncate" title={config.cookie}>
-                            {config.cookie}
-                          </TableCell>
-                          <TableCell className="whitespace-nowrap">{config.asbd_id}</TableCell>
-                          <TableCell className="whitespace-nowrap">{config.lsd}</TableCell>
-                          <TableCell className="whitespace-nowrap">{config.doc_id_1}</TableCell>
-                          <TableCell className="whitespace-nowrap">{config.doc_id_2}</TableCell>
-                          <TableCell className="whitespace-nowrap">{formatDate(config.createdAt)}</TableCell>
-                          <TableCell className="whitespace-nowrap">{formatDate(config.updatedAt)}</TableCell>
-                          <TableCell className="whitespace-nowrap">
-                            <div className="flex gap-2">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => handleEditClick(config)}
-                                className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                              >
-                                <Pencil className="h-4 w-4" />
-                              </Button>
-                              <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                  <Button 
-                                    variant="ghost" 
-                                    size="icon"
-                                    className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent>
-                                  <AlertDialogHeader>
-                                    <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                      This action cannot be undone. This will permanently delete the configuration.
-                                    </AlertDialogDescription>
-                                  </AlertDialogHeader>
-                                  <AlertDialogFooter>
-                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                    <AlertDialogAction
-                                      onClick={() => handleDeleteConfig(config.id)}
-                                      className="bg-red-500 hover:bg-red-600"
-                                    >
-                                      Delete
-                                    </AlertDialogAction>
-                                  </AlertDialogFooter>
-                                </AlertDialogContent>
-                              </AlertDialog>
-                            </div>
-                          </TableCell>
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader className="sticky top-0 bg-white dark:bg-gray-900">
+                        <TableRow>
+                          <TableHead className="w-[200px]">Name</TableHead>
+                          <TableHead className="w-[250px]">Cookie</TableHead>
+                          <TableHead className="w-[150px]">ASBD ID</TableHead>
+                          <TableHead className="w-[150px]">LSD</TableHead>
+                          <TableHead className="w-[150px]">Doc ID 1</TableHead>
+                          <TableHead className="w-[150px]">Doc ID 2</TableHead>
+                          <TableHead className="w-[180px]">Created At</TableHead>
+                          <TableHead className="w-[180px]">Updated At</TableHead>
+                          <TableHead className="w-[100px]">Actions</TableHead>
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+                      </TableHeader>
+                      <TableBody>
+                        {filteredConfigs?.map((config) => (
+                          <TableRow key={config.id} className="h-16 hover:bg-gray-50 dark:hover:bg-gray-800">
+                            <TableCell className="font-medium whitespace-nowrap">{config.name}</TableCell>
+                            <TableCell className="max-w-[250px] truncate" title={config.cookie}>
+                              {config.cookie}
+                            </TableCell>
+                            <TableCell className="whitespace-nowrap">{config.asbd_id}</TableCell>
+                            <TableCell className="whitespace-nowrap">{config.lsd}</TableCell>
+                            <TableCell className="whitespace-nowrap">{config.doc_id_1}</TableCell>
+                            <TableCell className="whitespace-nowrap">{config.doc_id_2}</TableCell>
+                            <TableCell className="whitespace-nowrap">{formatDate(config.createdAt)}</TableCell>
+                            <TableCell className="whitespace-nowrap">{formatDate(config.updatedAt)}</TableCell>
+                            <TableCell className="whitespace-nowrap">
+                              <div className="flex gap-2">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => handleEditClick(config)}
+                                  className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                                >
+                                  <Pencil className="h-4 w-4" />
+                                </Button>
+                                <AlertDialog>
+                                  <AlertDialogTrigger asChild>
+                                    <Button 
+                                      variant="ghost" 
+                                      size="icon"
+                                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </AlertDialogTrigger>
+                                  <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                      <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                      <AlertDialogDescription>
+                                        This action cannot be undone. This will permanently delete the configuration.
+                                      </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                      <AlertDialogAction
+                                        onClick={() => handleDeleteConfig(config.id)}
+                                        className="bg-red-500 hover:bg-red-600"
+                                      >
+                                        Delete
+                                      </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                  </AlertDialogContent>
+                                </AlertDialog>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
                 </div>
               )}
             </CardContent>
           </Card>
         </div>
-
-        {data?.pagination && (
-          <div className="mt-4 py-4 border-t bg-white dark:bg-gray-900">
-            <div className="flex justify-between items-center max-w-full px-4">
+        {data?.spyderConfigs?.pagination && (
+          <div className="mt-4 flex flex-col gap-4">
+            <div className="flex items-center justify-between">
               <div className="text-sm text-muted-foreground">
-                Showing page {data.pagination.page} of {data.pagination.totalPages} ({data.pagination.total} total items)
+                Showing page {currentPage} of {data.spyderConfigs.pagination.totalPages}
               </div>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  disabled={!data.pagination.hasPreviousPage}
-                  onClick={() => {/* Add pagination handling */}}
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">Items per page:</span>
+                <Select
+                  value={pageSize.toString()}
+                  onValueChange={(value) => handlePageSizeChange(Number(value))}
                 >
-                  Previous
-                </Button>
-                <Button
-                  variant="outline"
-                  disabled={!data.pagination.hasNextPage}
-                  onClick={() => {/* Add pagination handling */}}
-                >
-                  Next
-                </Button>
+                  <SelectTrigger className="h-8 w-[70px]">
+                    <SelectValue placeholder={pageSize} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="10">10</SelectItem>
+                    <SelectItem value="20">20</SelectItem>
+                    <SelectItem value="50">50</SelectItem>
+                    <SelectItem value="100">100</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
+            </div>
+            <div className="flex items-center justify-center space-x-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handlePageChange(currentPage - 1)}
+                disabled={currentPage === 1}
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={currentPage >= data.spyderConfigs.pagination.totalPages}
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
             </div>
           </div>
         )}
-      </div>
 
-      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Edit Config</DialogTitle>
-            <DialogDescription>
-              Update the details for your spyder configuration.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Input
-                placeholder="Name"
-                value={newConfig.name}
-                onChange={(e) => setNewConfig({ ...newConfig, name: e.target.value })}
-              />
-              <Input
-                placeholder="Cookie"
-                value={newConfig.cookie}
-                onChange={(e) => setNewConfig({ ...newConfig, cookie: e.target.value })}
-              />
-              <Input
-                placeholder="ASBD ID"
-                value={newConfig.asbd_id}
-                onChange={(e) => setNewConfig({ ...newConfig, asbd_id: e.target.value })}
-              />
-              <Input
-                placeholder="LSD"
-                value={newConfig.lsd}
-                onChange={(e) => setNewConfig({ ...newConfig, lsd: e.target.value })}
-              />
-              <Input
-                placeholder="Doc ID 1"
-                value={newConfig.doc_id_1}
-                onChange={(e) => setNewConfig({ ...newConfig, doc_id_1: e.target.value })}
-              />
-              <Input
-                placeholder="Doc ID 2"
-                value={newConfig.doc_id_2}
-                onChange={(e) => setNewConfig({ ...newConfig, doc_id_2: e.target.value })}
-              />
-              <Input
-                placeholder="Raw Data"
-                value={newConfig.raw_data}
-                onChange={(e) => setNewConfig({ ...newConfig, raw_data: e.target.value })}
-              />
+        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>Edit Config</DialogTitle>
+              <DialogDescription>
+                Update the details for your spyder configuration.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid gap-2">
+                <Input
+                  placeholder="Name"
+                  value={newConfig.name}
+                  onChange={(e) => setNewConfig({ ...newConfig, name: e.target.value })}
+                />
+                <Input
+                  placeholder="Cookie"
+                  value={newConfig.cookie}
+                  onChange={(e) => setNewConfig({ ...newConfig, cookie: e.target.value })}
+                />
+                <Input
+                  placeholder="ASBD ID"
+                  value={newConfig.asbd_id}
+                  onChange={(e) => setNewConfig({ ...newConfig, asbd_id: e.target.value })}
+                />
+                <Input
+                  placeholder="LSD"
+                  value={newConfig.lsd}
+                  onChange={(e) => setNewConfig({ ...newConfig, lsd: e.target.value })}
+                />
+                <Input
+                  placeholder="Doc ID 1"
+                  value={newConfig.doc_id_1}
+                  onChange={(e) => setNewConfig({ ...newConfig, doc_id_1: e.target.value })}
+                />
+                <Input
+                  placeholder="Doc ID 2"
+                  value={newConfig.doc_id_2}
+                  onChange={(e) => setNewConfig({ ...newConfig, doc_id_2: e.target.value })}
+                />
+                <Input
+                  placeholder="Raw Data"
+                  value={newConfig.raw_data}
+                  onChange={(e) => setNewConfig({ ...newConfig, raw_data: e.target.value })}
+                />
+              </div>
             </div>
-          </div>
-          <DialogFooter>
-            <Button
-              type="submit"
-              onClick={handleUpdateConfig}
-              disabled={updateMutation.isPending}
-            >
-              {updateMutation.isPending ? 'Updating...' : 'Update Config'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                onClick={() => updateMutation.mutate({ id: selectedConfig.id, input: selectedConfig })}
+                disabled={updateMutation.isPending}
+              >
+                {updateMutation.isPending ? 'Updating...' : 'Update'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Delete Config</DialogTitle>
+              <DialogDescription>
+                Are you sure you want to delete this config? This action cannot be undone.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={() => deleteMutation.mutate(selectedConfig?.id)}
+                disabled={deleteMutation.isPending}
+              >
+                {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
     </DashboardLayout>
   );
 };

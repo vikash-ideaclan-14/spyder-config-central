@@ -57,29 +57,33 @@ export type Company = {
   updatedAt: string;
 };
 
-export type Ad = {
+export interface AssociatedGroup {
+  id: string;
+  name: string;
+  type: string;
+}
+
+export interface Ad {
   id: string;
   title: string;
   body: string;
   original_image_url: string;
   original_video_url: string;
+  link_url: string;
+  ctaText: string;
+  status: string;
+  vendor: Vendor;
+  company: Company;
   domain: Domain;
   language: Language;
-  vendor: Vendor;
-  country: Country;
-  company: Company;
-  ctaText: string;
-  link_url: string;
-  caption: string;
+  countries: Country[];
+  batch: Batch;
   display_format: string;
-  page_name: string;
-  page_id: string;
   startDate: string;
   endDate: string;
   createdAt: string;
   updatedAt: string;
-  countries: Country[];
-};
+}
 
 export type Batch = {
   id: string;
@@ -180,21 +184,7 @@ export const adApi = {
       throw error;
     }
   },
-  
-  // getAd: async (id: string): Promise<Ad | null> => {
-  //   await delay(300);
-  //   const ad = mockAds.find(a => a.id === id);
-  //   return ad || null;
-  // },
-  
-  // deleteAd: async (id: string): Promise<void> => {
-  //   await delay(500);
-  //   const adIndex = mockAds.findIndex(a => a.id === id);
-  //   if (adIndex !== -1) {
-  //     mockAds.splice(adIndex, 1);
-  //     toast.success("Ad deleted successfully");
-  //   }
-  // }
+
 };
 
 export const batchApi = {
@@ -274,8 +264,8 @@ interface SpyderConfigResponse {
 
 // Define the query
 const GET_SPYDER_CONFIGS = gql`
-  query SpyderConfigs {
-    spyderConfigs {
+  query SpyderConfigs($pagination: PaginationInput!) {
+    spyderConfigs(pagination: $pagination) {
       items {
         id
         name
@@ -460,11 +450,19 @@ const GET_ADS = gql`
 `;
 
 export const configApi = {
-  getConfigs: async (): Promise<SpyderConfigResponse> => {
+  getConfigs: async (page: number = 1, pageSize: number = 10, sortBy: string | null = null, sortOrder: string | null = null): Promise<SpyderConfigResponse> => {
     try {
       const data = await request<{ spyderConfigs: SpyderConfigResponse }>(
         GRAPHQL_ENDPOINT,
-        GET_SPYDER_CONFIGS
+        GET_SPYDER_CONFIGS,
+        {
+          pagination: {
+            page,
+            pageSize,
+            sortBy,
+            sortOrder
+          }
+        }
       );
       return data.spyderConfigs;
     } catch (error) {
