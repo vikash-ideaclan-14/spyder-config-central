@@ -45,6 +45,7 @@ export interface Company extends BaseEntity {
 }
 
 export interface AssociatedGroup extends BaseEntity {
+  status: string;
   name: string;
   type: string;
 }
@@ -407,53 +408,253 @@ const mockBatches: Batch[] = Array.from({ length: 6 }, (_, i) => ({
   updatedAt: new Date().toISOString()
 }));
 
+export interface CreateSpyderBatchInput {
+  countryId: string | null;
+  endDate: string | null;
+  spyderGroupId: string | null;
+  startDate: string | null;
+  status: string | null;
+}
+
+export interface CreateSpyderBatchResponse {
+  createSpyderBatch: SpyderBatch;
+}
+
 export const batchApi = {
-  getBatches: async (): Promise<Batch[]> => {
-    await delay(700);
-    return [...mockBatches];
-  },
-  
-  getBatch: async (id: string): Promise<Batch | null> => {
-    await delay(400);
-    const batch = mockBatches.find(b => b.id === id);
-    return batch || null;
-  },
-  
-  createBatch: async (batch: Omit<Batch, 'id' | 'completedTasks'>): Promise<Batch> => {
-    await delay(900);
-    const newBatch: Batch = {
-      id: `batch-${mockBatches.length + 1}`,
-      ...batch,
-      completedTasks: 0
-    };
-    mockBatches.push(newBatch);
-    toast.success("Batch created successfully");
-    return newBatch;
-  },
-  
-  updateBatch: async (id: string, updates: Partial<Omit<Batch, 'id'>>): Promise<Batch> => {
-    await delay(800);
-    const batchIndex = mockBatches.findIndex(b => b.id === id);
-    if (batchIndex === -1) {
-      throw new Error('Batch not found');
+  getBatches: async ({ pagination }: { pagination: { page: number; pageSize: number } }): Promise<SpyderBatchesResponse> => {
+    try {
+      const query = gql`
+        query SpyderBatches($pagination: PaginationInput) {
+          spyderBatches(pagination: $pagination) {
+            items {
+              id
+              start_date
+              end_date
+              status
+              createdAt
+              updatedAt
+              batchCountry {
+                id
+                code
+                name
+                createdAt
+                updatedAt
+              }
+              associatedGroup {
+                id
+                name
+                status
+                createdAt
+                updatedAt
+                vendor {
+                  id
+                  name
+                  description
+                  createdAt
+                  updatedAt
+                }
+                company {
+                  id
+                  name
+                  description
+                  createdAt
+                  updatedAt
+                }
+              }
+              ads {
+                id
+                title
+                body
+                original_image_url
+                original_video_url
+                cta_text
+                link_url
+                caption
+                display_format
+                page_name
+                page_id
+                startDate
+                endDate
+                createdAt
+                updatedAt
+                domain {
+                  id
+                  domain
+                  createdAt
+                  updatedAt
+                  domainVendor {
+                    id
+                    name
+                    description
+                    createdAt
+                    updatedAt
+                  }
+                  domainCompany {
+                    id
+                    name
+                    description
+                    createdAt
+                    updatedAt
+                  }
+                }
+                language {
+                  id
+                  code
+                  name
+                  createdAt
+                  updatedAt
+                }
+                countries {
+                  id
+                  code
+                  name
+                  createdAt
+                  updatedAt
+                }
+                batches {
+                  id
+                  start_date
+                  end_date
+                  status
+                  createdAt
+                  updatedAt
+                }
+              }
+            }
+            pagination {
+              total
+              page
+              pageSize
+              totalPages
+              hasNextPage
+              hasPreviousPage
+            }
+          }
+        }
+      `;
+
+      const variables = {
+        pagination: {
+          page: pagination.page,
+          pageSize: pagination.pageSize
+        }
+      };
+
+      const response = await request<SpyderBatchesResponse>(GRAPHQL_ENDPOINT, query, variables);
+      return response;
+    } catch (error) {
+      toast.error('Failed to fetch batches');
+      throw error;
     }
-    
-    const updatedBatch = {
-      ...mockBatches[batchIndex],
-      ...updates
-    };
-    
-    mockBatches[batchIndex] = updatedBatch;
-    toast.success("Batch updated successfully");
-    return updatedBatch;
   },
-  
-  deleteBatch: async (id: string): Promise<void> => {
-    await delay(600);
-    const batchIndex = mockBatches.findIndex(b => b.id === id);
-    if (batchIndex !== -1) {
-      mockBatches.splice(batchIndex, 1);
-      toast.success("Batch deleted successfully");
+
+  createBatch: async (input: CreateSpyderBatchInput): Promise<SpyderBatch> => {
+    try {
+      const mutation = gql`
+        mutation CreateSpyderBatch($input: SpyderBatchInput!) {
+          createSpyderBatch(input: $input) {
+            id
+            start_date
+            end_date
+            status
+            createdAt
+            updatedAt
+            batchCountry {
+              id
+              code
+              name
+              createdAt
+              updatedAt
+            }
+            associatedGroup {
+              id
+              name
+              status
+              createdAt
+              updatedAt
+              vendor {
+                id
+                name
+                description
+                createdAt
+                updatedAt
+              }
+              company {
+                id
+                name
+                description
+                createdAt
+                updatedAt
+              }
+            }
+            ads {
+              id
+              title
+              body
+              original_image_url
+              original_video_url
+              cta_text
+              link_url
+              caption
+              display_format
+              page_name
+              page_id
+              startDate
+              endDate
+              createdAt
+              updatedAt
+              domain {
+                id
+                domain
+                createdAt
+                updatedAt
+                domainVendor {
+                  id
+                  name
+                  description
+                  createdAt
+                  updatedAt
+                }
+                domainCompany {
+                  id
+                  name
+                  description
+                  createdAt
+                  updatedAt
+                }
+              }
+              language {
+                id
+                code
+                name
+                createdAt
+                updatedAt
+              }
+              countries {
+                id
+                code
+                name
+                createdAt
+                updatedAt
+              }
+              batches {
+                id
+                start_date
+                end_date
+                status
+                createdAt
+                updatedAt
+              }
+            }
+          }
+        }
+      `;
+
+      const response = await request<CreateSpyderBatchResponse>(GRAPHQL_ENDPOINT, mutation, { input });
+      return response.createSpyderBatch;
+    } catch (error) {
+      toast.error('Failed to create batch');
+      throw error;
     }
   }
 };
@@ -613,3 +814,142 @@ const GET_ADS = gql`
     }
   }
 `;
+
+export interface SpyderBatch {
+  id: string;
+  start_date: string;
+  end_date: string;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+  batchCountry: Country;
+  associatedGroup: AssociatedGroup;
+  ads: Ad[];
+}
+
+export interface SpyderBatchesResponse {
+  spyderBatches: {
+    items: SpyderBatch[];
+    pagination: PaginationInfo;
+  };
+}
+
+export interface CountriesResponse {
+  countries: {
+    items: Country[];
+    pagination: PaginationInfo;
+  };
+}
+
+export const countryApi = {
+  getCountries: async (page: number = 1, pageSize: number = 10): Promise<CountriesResponse> => {
+    try {
+      const query = gql`
+        query Countries($pagination: PaginationInput) {
+          countries(pagination: $pagination) {
+            items {
+              id
+              code
+              name
+              createdAt
+              updatedAt
+            }
+            pagination {
+              total
+              page
+              pageSize
+              totalPages
+              hasNextPage
+              hasPreviousPage
+            }
+          }
+        }
+      `;
+
+      const variables = {
+        pagination: {
+          page,
+          pageSize
+        }
+      };
+
+      const response = await request<CountriesResponse>(GRAPHQL_ENDPOINT, query, variables);
+      return response;
+    } catch (error) {
+      toast.error('Failed to fetch countries');
+      throw error;
+    }
+  }
+};
+
+export interface SpyderGroup {
+  id: string;
+  name: string;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+  vendor: Vendor;
+  company: Company;
+}
+
+export interface SpyderGroupsResponse {
+  spyedGroups: {
+    items: SpyderGroup[];
+    pagination: PaginationInfo;
+  };
+}
+
+export const groupApi = {
+  getGroups: async (page: number = 1, pageSize: number = 10): Promise<SpyderGroupsResponse> => {
+    try {
+      const query = gql`
+        query SpyedGroups($pagination: PaginationInput) {
+          spyedGroups(pagination: $pagination) {
+            items {
+              id
+              name
+              status
+              createdAt
+              updatedAt
+              vendor {
+                id
+                name
+                description
+                createdAt
+                updatedAt
+              }
+              company {
+                id
+                name
+                description
+                createdAt
+                updatedAt
+              }
+            }
+            pagination {
+              total
+              page
+              pageSize
+              totalPages
+              hasNextPage
+              hasPreviousPage
+            }
+          }
+        }
+      `;
+
+      const variables = {
+        pagination: {
+          page,
+          pageSize
+        }
+      };
+
+      const response = await request<SpyderGroupsResponse>(GRAPHQL_ENDPOINT, query, variables);
+      return response;
+    } catch (error) {
+      toast.error('Failed to fetch groups');
+      throw error;
+    }
+  }
+};

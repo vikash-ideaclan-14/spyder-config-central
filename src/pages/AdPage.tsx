@@ -1,41 +1,31 @@
-import React, { useState, useRef, useEffect } from 'react';
+import { DashboardLayout } from '@/components/layout/DashboardLayout';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Loader } from '@/components/ui/loader';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { usePagination } from '@/hooks/usePagination';
+import { formatDate } from '@/lib/utils';
+import { Ad, adApi } from '@/services/api';
 import { useQuery } from '@tanstack/react-query';
-import { useLocation } from 'react-router-dom';
-import { toast } from 'sonner';
-import { 
-  Search, 
-  X, 
-  Plus, 
-  Calendar, 
-  Eye, 
-  MousePointer, 
-  ArrowUpRight,
+import {
   CheckCircle2,
-  XCircle,
-  Clock,
   ChevronLeft,
   ChevronRight,
-  Play,
+  Clock,
+  Eye,
+  Maximize2,
   Pause,
-  ZoomIn,
+  Play,
+  Search,
   Volume2,
   VolumeX,
-  Maximize2,
-  X as CloseIcon
+  X,
+  XCircle,
+  ZoomIn
 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
-import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
-import { DashboardLayout } from '@/components/layout/DashboardLayout';
-import { adApi, Ad } from '@/services/api';
-import { formatDate } from '@/lib/utils';
-import { Pagination } from '@/components/ui/pagination';
-import { usePagination } from '@/hooks/usePagination';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader } from '@/components/ui/loader';
+import React, { useEffect, useRef, useState } from 'react';
 
 interface VideoState {
   isPlaying: boolean;

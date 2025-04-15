@@ -24,7 +24,9 @@ const Dashboard: React.FC = () => {
 
   const { data: batches } = useQuery({
     queryKey: ['batches'],
-    queryFn: batchApi.getBatches,
+    queryFn: () => batchApi.getBatches({
+      pagination: { page: 1, pageSize: 10 },
+    }),
   });
 
   // Prepare ad stats
@@ -33,9 +35,9 @@ const Dashboard: React.FC = () => {
 
   // Prepare batch stats
   const batchData = batches ? [
-    { name: 'Active', value: batches.filter(batch => batch.status === 'active').length },
-    { name: 'Completed', value: batches.filter(batch => batch.status === 'completed').length },
-    { name: 'Upcoming', value: batches.filter(batch => batch.status === 'upcoming').length },
+    { name: 'Active', value: batches.spyderBatches.items.filter(batch => batch.status === 'active').length },
+    { name: 'Completed', value: batches.spyderBatches.items.filter(batch => batch.status === 'completed').length },
+    { name: 'Upcoming', value: batches.spyderBatches.items.filter(batch => batch.status === 'upcoming').length },
   ] : [];
 
   console.log(batchData);
@@ -94,7 +96,7 @@ const Dashboard: React.FC = () => {
               <Layers className="h-5 w-5 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold">{batches?.length || 0}</div>
+              <div className="text-3xl font-bold">{batches?.spyderBatches.items.length || 0}</div>
               <Link to="/batches" className="text-sm text-spyder-teal flex items-center mt-2 hover:underline">
                 Manage Batches <ArrowRight className="h-4 w-4 ml-1" />
               </Link>
@@ -219,13 +221,13 @@ const Dashboard: React.FC = () => {
                   <div className="flex justify-between text-sm">
                     <span>Active Batches:</span>
                     <span className="font-medium">
-                      {batches?.filter(batch => batch.status === 'active').length || 0}
+                      {batches?.spyderBatches.items.filter(batch => batch.status === 'active').length || 0}
                     </span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span>Completed:</span>
                     <span className="font-medium">
-                      {batches?.filter(batch => batch.status === 'completed').length || 0}
+                      {batches?.spyderBatches.items.filter(batch => batch.status === 'completed').length || 0}
                     </span>
                   </div>
                   <div className="flex justify-between text-sm">
