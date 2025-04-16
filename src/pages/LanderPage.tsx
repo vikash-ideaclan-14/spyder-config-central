@@ -10,10 +10,11 @@ import { usePagination } from '@/hooks/usePagination';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const LanderPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
-  const { currentPage, pageSize, handlePageChange, handlePageSizeChange } = usePagination();
+  const { currentPage, pageSize, handlePageChange, handlePageSizeChange, pageInput, handlePageInputChange, handlePageInputSubmit } = usePagination();
 
   const { data, isLoading } = useQuery({
     queryKey: ['landers', currentPage, pageSize],
@@ -138,13 +139,55 @@ const LanderPage: React.FC = () => {
           </div>
 
           {data?.landers?.pagination && (
-            <Pagination
-              currentPage={currentPage}
-              totalPages={data.landers.pagination.totalPages}
-              onPageChange={handlePageChange}
-              pageSize={pageSize}
-              onPageSizeChange={handlePageSizeChange}
-            />
+            <div className="sticky bottom-0 left-0 right-0 bg-white dark:bg-gray-900 border-t p-4 shadow-lg">
+              <div className="max-w-7xl mx-auto flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-gray-600">
+                    Page {currentPage} of {data.landers.pagination.totalPages}
+                  </span>
+                  <Input
+                    type="text"
+                    value={pageInput}
+                    onChange={handlePageInputChange}
+                    onKeyDown={handlePageInputSubmit}
+                    className="w-16 h-8 text-center"
+                    placeholder="Page"
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <Select
+                    value={pageSize.toString()}
+                    onValueChange={(value) => handlePageSizeChange(Number(value))}
+                  >
+                    <SelectTrigger className="h-8 w-[70px]">
+                      <SelectValue placeholder={pageSize} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="10">10</SelectItem>
+                      <SelectItem value="20">20</SelectItem>
+                      <SelectItem value="50">50</SelectItem>
+                      <SelectItem value="100">100</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    disabled={currentPage === 1}
+                  >
+                    Previous
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    disabled={currentPage >= data.landers.pagination.totalPages}
+                  >
+                    Next
+                  </Button>
+                </div>
+              </div>
+            </div>
           )}
         </div>
       </div>

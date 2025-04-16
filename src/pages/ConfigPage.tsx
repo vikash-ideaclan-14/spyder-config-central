@@ -85,6 +85,7 @@ const ConfigPage: React.FC = () => {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [validationTimeout, setValidationTimeout] = useState<NodeJS.Timeout | null>(null);
+  const [pageInput, setPageInput] = useState('');
 
   const form = useForm<ConfigFormValues>({
     resolver: zodResolver(configFormSchema),
@@ -238,6 +239,19 @@ const ConfigPage: React.FC = () => {
     config.doc_id_1.toLowerCase().includes(searchTerm.toLowerCase()) ||
     config.doc_id_2.toLowerCase().includes(searchTerm.toLowerCase())
   ) || [];
+
+  const handlePageInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setPageInput(e.target.value);
+  };
+
+  const handlePageInputSubmit = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      const page = Number(pageInput);
+      if (!isNaN(page) && page > 0 && page <= data?.spyderConfigs.pagination.totalPages) {
+        handlePageChange(page);
+      }
+    }
+  };
 
   if (error) {
     return (
@@ -510,14 +524,24 @@ const ConfigPage: React.FC = () => {
             </CardContent>
           </Card>
         </div>
+
         {data?.spyderConfigs?.pagination && (
-          <div className="mt-4 flex flex-col gap-4">
-            <div className="flex items-center justify-between">
-              <div className="text-sm text-muted-foreground">
-                Showing page {currentPage} of {data.spyderConfigs.pagination.totalPages}
+          <div className="sticky bottom-0 left-0 right-0 bg-white dark:bg-gray-900 border-t p-4 shadow-lg">
+            <div className="max-w-7xl mx-auto flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-600">
+                  Page {currentPage} of {data.spyderConfigs.pagination.totalPages}
+                </span>
+                <Input
+                  type="text"
+                  value={pageInput}
+                  onChange={handlePageInputChange}
+                  onKeyDown={handlePageInputSubmit}
+                  className="w-16 h-8 text-center"
+                  placeholder="Page"
+                />
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">Items per page:</span>
                 <Select
                   value={pageSize.toString()}
                   onValueChange={(value) => handlePageSizeChange(Number(value))}
@@ -532,25 +556,23 @@ const ConfigPage: React.FC = () => {
                     <SelectItem value="100">100</SelectItem>
                   </SelectContent>
                 </Select>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  disabled={currentPage === 1}
+                >
+                  Previous
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  disabled={currentPage >= data.spyderConfigs.pagination.totalPages}
+                >
+                  Next
+                </Button>
               </div>
-            </div>
-            <div className="flex items-center justify-center space-x-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handlePageChange(currentPage - 1)}
-                disabled={currentPage === 1}
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handlePageChange(currentPage + 1)}
-                disabled={currentPage >= data.spyderConfigs.pagination.totalPages}
-              >
-                <ChevronRight className="h-4 w-4" />
-              </Button>
             </div>
           </div>
         )}

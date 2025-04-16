@@ -917,6 +917,7 @@ export interface SpyderGroup {
   updatedAt: string;
   vendor: Vendor;
   company: Company;
+  domains: Domain[];
 }
 
 export interface SpyderGroupsResponse {
@@ -961,6 +962,7 @@ export interface CreateSpyedGroupInput {
   status: string;
   companyIds: string[];
   vendorIds: string[];
+  domainIds: string[];
 }
 
 export interface CreateSpyedGroupResponse {
@@ -1056,21 +1058,47 @@ export const vendorApi = {
 };
 
 const GET_GROUPS_QUERY: DocumentNode = gql`
-  query GetGroups($pagination: PaginationInput!) {
-    spyedGroups(pagination: $pagination) {
+  query GetGroups($pagination: PaginationInput!, $filters: groupFilterInput) {
+    spyedGroups(pagination: $pagination, filters: $filters) {
       items {
         id
         name
         status
         createdAt
         updatedAt
-        company {
-          id
-          name
-        }
         vendor {
           id
           name
+          description
+          createdAt
+          updatedAt
+        }
+        company {
+          id
+          name
+          description
+          createdAt
+          updatedAt
+        }
+        domains {
+          id
+          domain
+          createdAt
+          updatedAt
+          domainVendor {
+            id
+            name
+            description
+            createdAt
+            updatedAt
+          }
+          domainCompany {
+            id
+            name
+            description
+            createdAt
+            updatedAt
+          }
         }
       }
       pagination {
@@ -1265,3 +1293,69 @@ const SCRAPE_ADS_BY_BATCH_MUTATION = gql`
     }
   }
 `;
+
+export interface Domain {
+  id: string;
+  domain: string;
+  createdAt: string;
+  updatedAt: string;
+  domainVendor: Vendor;
+  domainCompany: Company;
+}
+
+export interface DomainsResponse {
+  domains: {
+    items: Domain[];
+    pagination: PaginationInfo;
+  };
+}
+
+const GET_DOMAINS_QUERY: DocumentNode = gql`
+  query Domains($pagination: PaginationInput) {
+    domains(pagination: $pagination) {
+      items {
+        id
+        domain
+        createdAt
+        updatedAt
+        domainVendor {
+          id
+          name
+          description
+          createdAt
+          updatedAt
+        }
+        domainCompany {
+          id
+          name
+          description
+          createdAt
+          updatedAt
+        }
+      }
+      pagination {
+        total
+        page
+        pageSize
+        totalPages
+        hasNextPage
+        hasPreviousPage
+      }
+    }
+  }
+`;
+
+export const domainApi = {
+  getDomains: async (page = 1, pageSize = 100): Promise<DomainsResponse> => {
+    try {
+      const { data } = await client.query<DomainsResponse>({
+        query: GET_DOMAINS_QUERY,
+        variables: { pagination: { page, pageSize } },
+      });
+      return data;
+    } catch (error) {
+      toast.error('Failed to fetch domains');
+      throw error;
+    }
+  },
+};

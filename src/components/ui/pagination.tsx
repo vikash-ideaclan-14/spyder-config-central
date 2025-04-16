@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils"
 import { ButtonProps, buttonVariants } from "@/components/ui/button"
 import { Button } from './button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './select'
+import { Input } from './input'
 
 interface PaginationProps {
   currentPage: number;
@@ -25,11 +26,46 @@ export const PaginationRoot = ({
 }: PaginationProps) => {
   if (totalPages <= 1) return null;
 
+  const [pageInput, setPageInput] = React.useState(currentPage.toString());
+
+  const handlePageInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    if (value === '' || /^\d+$/.test(value)) {
+      setPageInput(value);
+    }
+  };
+
+  const handlePageInputSubmit = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      const page = parseInt(pageInput);
+      if (page >= 1 && page <= totalPages) {
+        onPageChange(page);
+      } else {
+        setPageInput(currentPage.toString());
+      }
+    }
+  };
+
+  React.useEffect(() => {
+    setPageInput(currentPage.toString());
+  }, [currentPage]);
+
   return (
     <div className={`flex items-center justify-between ${className}`}>
       <div className="flex items-center gap-4">
         <div className="text-sm text-muted-foreground">
           Showing page {currentPage} of {totalPages}
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-muted-foreground">Go to page:</span>
+          <Input
+            type="text"
+            value={pageInput}
+            onChange={handlePageInputChange}
+            onKeyDown={handlePageInputSubmit}
+            className="w-16 h-8 text-center"
+            placeholder="Page"
+          />
         </div>
         <div className="flex items-center gap-2">
           <span className="text-sm text-muted-foreground">Items per page:</span>

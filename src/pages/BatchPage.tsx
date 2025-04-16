@@ -153,7 +153,7 @@ const BatchPage: React.FC = () => {
   const [expandedBatchId, setExpandedBatchId] = useState<string | null>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const queryClient = useQueryClient();
-  const { currentPage, pageSize, handlePageChange, handlePageSizeChange } = usePagination();
+  const { currentPage, pageSize, handlePageChange, handlePageSizeChange, pageInput, handlePageInputChange, handlePageInputSubmit } = usePagination();
   const [selectedConfig, setSelectedConfig] = useState<string | null>(null);
   const [isConfigDialogOpen, setIsConfigDialogOpen] = useState(false);
   const [selectedBatchId, setSelectedBatchId] = useState<string | null>(null);
@@ -546,14 +546,54 @@ const BatchPage: React.FC = () => {
           )}
 
           {batches?.spyderBatches?.pagination && (
-            <div className="mt-4">
-              <Pagination
-                currentPage={currentPage}
-                totalPages={batches.spyderBatches.pagination.totalPages}
-                onPageChange={handlePageChange}
-                pageSize={pageSize}
-                onPageSizeChange={handlePageSizeChange}
-              />
+            <div className="sticky bottom-0 left-0 right-0 bg-white dark:bg-gray-900 border-t p-4 shadow-lg">
+              <div className="max-w-7xl mx-auto flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-gray-600">
+                    Page {currentPage} of {batches.spyderBatches.pagination.totalPages}
+                  </span>
+                  <Input
+                    type="text"
+                    value={pageInput}
+                    onChange={handlePageInputChange}
+                    onKeyDown={handlePageInputSubmit}
+                    className="w-16 h-8 text-center"
+                    placeholder="Page"
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <Select
+                    value={pageSize.toString()}
+                    onValueChange={(value) => handlePageSizeChange(Number(value))}
+                  >
+                    <SelectTrigger className="h-8 w-[70px]">
+                      <SelectValue placeholder={pageSize} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="10">10</SelectItem>
+                      <SelectItem value="20">20</SelectItem>
+                      <SelectItem value="50">50</SelectItem>
+                      <SelectItem value="100">100</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    disabled={currentPage === 1}
+                  >
+                    Previous
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    disabled={currentPage >= batches.spyderBatches.pagination.totalPages}
+                  >
+                    Next
+                  </Button>
+                </div>
+              </div>
             </div>
           )}
         </div>

@@ -42,7 +42,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { usePagination } from '@/hooks/usePagination';
 import { formatDate } from '@/lib/utils';
-import { groupApi, companyApi, vendorApi, SpyderGroup } from '@/services/api';
+import { groupApi, companyApi, vendorApi, SpyderGroup, domainApi } from '@/services/api';
 import {
   Table,
   TableBody,
@@ -58,6 +58,7 @@ type GroupFormValues = {
   status: string;
   companyIds: string[];
   vendorIds: string[];
+  domainIds: string[];
 };
 
 const groupFormSchema = z.object({
@@ -65,6 +66,7 @@ const groupFormSchema = z.object({
   status: z.string().min(1, "Status is required"),
   companyIds: z.array(z.string()).min(1, "At least one company is required"),
   vendorIds: z.array(z.string()).min(1, "At least one vendor is required"),
+  domainIds: z.array(z.string()).min(1, "At least one domain is required"),
 });
 
 const SpyderGroupPage: React.FC = () => {
@@ -73,7 +75,7 @@ const SpyderGroupPage: React.FC = () => {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [selectedGroup, setSelectedGroup] = useState<SpyderGroup | null>(null);
   const queryClient = useQueryClient();
-  const { currentPage, pageSize, handlePageChange, handlePageSizeChange } = usePagination();
+  const { currentPage, pageSize, handlePageChange, handlePageSizeChange, pageInput, handlePageInputChange, handlePageInputSubmit } = usePagination();
 
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['groups', currentPage, pageSize],
@@ -94,6 +96,11 @@ const SpyderGroupPage: React.FC = () => {
     queryFn: () => vendorApi.getVendors(1, 100),
   });
 
+  const { data: domains } = useQuery({
+    queryKey: ['domains'],
+    queryFn: () => domainApi.getDomains(1, 100),
+  });
+
   const form = useForm<GroupFormValues>({
     resolver: zodResolver(groupFormSchema),
     defaultValues: {
@@ -101,6 +108,7 @@ const SpyderGroupPage: React.FC = () => {
       status: "ACTIVE",
       companyIds: [],
       vendorIds: [],
+      domainIds: [],
     },
   });
 
@@ -165,6 +173,7 @@ const SpyderGroupPage: React.FC = () => {
       status: group.status,
       companyIds: [group.company?.id].filter(Boolean) as string[],
       vendorIds: [group.vendor?.id].filter(Boolean) as string[],
+      domainIds: group.domains?.map(d => d.id) || [],
     });
     setIsEditDialogOpen(true);
   };
@@ -301,6 +310,33 @@ const SpyderGroupPage: React.FC = () => {
                         </FormItem>
                       )}
                     />
+                    <FormField
+                      control={form.control}
+                      name="domainIds"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Domains</FormLabel>
+                          <Select
+                            onValueChange={(value) => field.onChange([...field.value, value])}
+                            value={field.value[field.value.length - 1]}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select domains" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {domains?.domains.items.map((domain) => (
+                                <SelectItem key={domain.id} value={domain.id}>
+                                  {domain.domain}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
                     <DialogFooter>
                       <Button type="submit" disabled={createMutation.isPending}>
                         {createMutation.isPending ? 'Creating...' : 'Create Group'}
@@ -322,86 +358,158 @@ const SpyderGroupPage: React.FC = () => {
             />
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredGroups.map((group) => (
-              <Card key={group.id}>
-                <CardHeader>
-                  <div className="flex justify-between items-start">
-                    <CardTitle className="text-lg">{group.name}</CardTitle>
-                    <div className="flex gap-2">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleEdit(group)}
-                        className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button 
-                            variant="ghost" 
-                            size="icon"
-                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              This action cannot be undone. This will permanently delete the group.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction
-                              onClick={() => handleDelete(group.id)}
-                              className="bg-red-500 hover:bg-red-600"
+          {isLoading ? (
+            <div className="flex items-center justify-center py-20">
+              <Loader className="h-8 w-8 animate-spin" />
+              <p className="ml-2">Loading groups...</p>
+            </div>
+          ) : filteredGroups.length === 0 ? (
+            <Card className="py-16">
+              <CardContent className="flex flex-col items-center justify-center text-center">
+                <SearchX className="h-16 w-16 text-muted-foreground mb-4" />
+                <h3 className="text-lg font-medium mb-2">No groups found</h3>
+                <p className="text-muted-foreground mb-6">
+                  No groups match your current search
+                </p>
+              </CardContent>
+            </Card>
+          ) : (
+            <>
+              <div className="flex flex-col border rounded-md">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Company</TableHead>
+                      <TableHead>Vendor</TableHead>
+                      <TableHead>Domains</TableHead>
+                      <TableHead>Created At</TableHead>
+                      <TableHead>Updated At</TableHead>
+                      <TableHead>Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredGroups.map((group) => (
+                      <TableRow key={group.id}>
+                        <TableCell className="font-medium">{group.name}</TableCell>
+                        <TableCell>
+                          <Badge variant={group.status === "ACTIVE" ? "default" : "secondary"}>
+                            {group.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>{group.company?.name || '-'}</TableCell>
+                        <TableCell>{group.vendor?.name || '-'}</TableCell>
+                        <TableCell>
+                          <div className="flex flex-wrap gap-1">
+                            {group.domains?.map(domain => (
+                              <Badge key={domain.id} variant="outline" className="text-xs">
+                                {domain.domain}
+                              </Badge>
+                            ))}
+                            {(!group.domains || group.domains.length === 0) && '-'}
+                          </div>
+                        </TableCell>
+                        <TableCell>{formatDate(parseInt(group.createdAt))}</TableCell>
+                        <TableCell>{formatDate(parseInt(group.updatedAt))}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleEdit(group)}
+                              className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
                             >
-                              Delete
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className='flex items-center justify-between gap-2'>
-                      <h4 className="text-sm font-medium mb-2">Company</h4>
-                      <p className="text-sm text-muted-foreground">
-                        {group.company?.name}
-                      </p>
-                    </div>
-                    <div className='flex items-center justify-between gap-2'>
-                      <h4 className="text-sm font-medium mb-2">Vendor</h4>
-                      <p className="text-sm text-muted-foreground">
-                        {group.vendor?.name}
-                      </p>
-                    </div>
-                    <div className="text-sm text-muted-foreground">
-                      Created: {formatDate(parseInt(group.createdAt))}
-                    </div>
-                    <div className="text-sm text-muted-foreground">
-                      Updated: {formatDate(parseInt(group.updatedAt))}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon"
+                                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    This action cannot be undone. This will permanently delete the group.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    onClick={() => handleDelete(group.id)}
+                                    className="bg-red-500 hover:bg-red-600"
+                                  >
+                                    Delete
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
 
-          {data?.spyedGroups?.pagination && (
-            <Pagination
-              currentPage={currentPage}
-              totalPages={data.spyedGroups.pagination.totalPages}
-              onPageChange={handlePageChange}
-              pageSize={pageSize}
-              onPageSizeChange={handlePageSizeChange}
-            />
+              {data?.spyedGroups?.pagination && (
+                <div className="sticky bottom-0 left-0 right-0 bg-white dark:bg-gray-900 border rounded-md p-4 shadow-lg mt-6">
+                  <div className="max-w-7xl mx-auto flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-gray-600">
+                        Page {currentPage} of {data.spyedGroups.pagination.totalPages}
+                      </span>
+                      <Input
+                        type="text"
+                        value={pageInput}
+                        onChange={handlePageInputChange}
+                        onKeyDown={handlePageInputSubmit}
+                        className="w-16 h-8 text-center"
+                        placeholder="Page"
+                      />
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Select
+                        value={pageSize.toString()}
+                        onValueChange={(value) => handlePageSizeChange(Number(value))}
+                      >
+                        <SelectTrigger className="h-8 w-[70px]">
+                          <SelectValue placeholder={pageSize} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="10">10</SelectItem>
+                          <SelectItem value="20">20</SelectItem>
+                          <SelectItem value="50">50</SelectItem>
+                          <SelectItem value="100">100</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handlePageChange(currentPage - 1)}
+                        disabled={currentPage === 1}
+                      >
+                        Previous
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handlePageChange(currentPage + 1)}
+                        disabled={currentPage >= data.spyedGroups.pagination.totalPages}
+                      >
+                        Next
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>
@@ -496,6 +604,33 @@ const SpyderGroupPage: React.FC = () => {
                         {vendors?.vendors.items.map((vendor) => (
                           <SelectItem key={vendor.id} value={vendor.id}>
                             {vendor.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="domainIds"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Domains</FormLabel>
+                    <Select
+                      onValueChange={(value) => field.onChange([...field.value, value])}
+                      value={field.value[field.value.length - 1]}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select domains" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {domains?.domains.items.map((domain) => (
+                          <SelectItem key={domain.id} value={domain.id}>
+                            {domain.domain}
                           </SelectItem>
                         ))}
                       </SelectContent>

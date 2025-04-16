@@ -16,8 +16,8 @@ import {
   Clock,
   Eye,
   Maximize2,
-  Pause,
   Play,
+  Pause,
   Search,
   Volume2,
   VolumeX,
@@ -90,7 +90,7 @@ export default function AdPage() {
   const [filterValue, setFilterValue] = useState<string>('');
   const [appliedFilters, setAppliedFilters] = useState<Record<string, string | null>>({});
 
-  const { currentPage, pageSize, handlePageChange, handlePageSizeChange } = usePagination();
+  const { currentPage, pageSize, handlePageChange, handlePageSizeChange, pageInput, handlePageInputChange, handlePageInputSubmit } = usePagination();
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['ads', currentPage, pageSize, filters],
@@ -498,51 +498,6 @@ export default function AdPage() {
           </div>
         </div>
 
-        {data?.ads.pagination && (
-          <div className="mt-4 flex flex-col gap-4">
-            <div className="flex items-center justify-between">
-              <div className="text-sm text-muted-foreground">
-                Showing page {currentPage} of {data.ads.pagination.totalPages}
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">Items per page:</span>
-                <Select
-                  value={pageSize.toString()}
-                  onValueChange={(value) => handlePageSizeChange(Number(value))}
-                >
-                  <SelectTrigger className="h-8 w-[70px]">
-                    <SelectValue placeholder={pageSize} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="10">10</SelectItem>
-                    <SelectItem value="20">20</SelectItem>
-                    <SelectItem value="50">50</SelectItem>
-                    <SelectItem value="100">100</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="flex items-center justify-center space-x-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handlePageChange(currentPage - 1)}
-                disabled={currentPage === 1}
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handlePageChange(currentPage + 1)}
-                disabled={currentPage >= data.ads.pagination.totalPages}
-              >
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-        )}
-
         {/* Fullscreen Image View */}
         {isImageFullscreen && fullscreenImage && (
           <div 
@@ -564,6 +519,58 @@ export default function AdPage() {
               className="max-h-[90vh] max-w-[90vw] object-contain"
               onClick={(e) => e.stopPropagation()}
             />
+          </div>
+        )}
+
+        {data?.ads.pagination && (
+          <div className="sticky bottom-0 left-0 right-0 bg-white dark:bg-gray-900 border-t p-4 shadow-lg">
+            <div className="max-w-7xl mx-auto flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-600">
+                  Page {currentPage} of {data.ads.pagination.totalPages}
+                </span>
+                <Input
+                  type="text"
+                  value={pageInput}
+                  onChange={handlePageInputChange}
+                  onKeyDown={handlePageInputSubmit}
+                  className="w-16 h-8 text-center"
+                  placeholder="Page"
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <Select
+                  value={pageSize.toString()}
+                  onValueChange={(value) => handlePageSizeChange(parseInt(value))}
+                >
+                  <SelectTrigger className="h-8 w-[70px]">
+                    <SelectValue placeholder={pageSize} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="10">10</SelectItem>
+                    <SelectItem value="20">20</SelectItem>
+                    <SelectItem value="50">50</SelectItem>
+                    <SelectItem value="100">100</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  disabled={currentPage === 1}
+                >
+                  Previous
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  disabled={currentPage === data.ads.pagination.totalPages}
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
           </div>
         )}
       </div>
