@@ -45,7 +45,7 @@ import {
 } from '@/components/ui/accordion';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
-import { SpyderBatch, batchApi, CreateSpyderBatchInput, countryApi, groupApi } from '@/services/api';
+import { SpyderBatch, batchApi, CreateSpyderBatchInput, countryApi, groupApi, configApi } from '@/services/api';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -54,6 +54,14 @@ import { formatDate } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 import { usePagination } from '@/hooks/usePagination';
 import { Pagination } from '@/components/ui/pagination';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 // Helper component for status badge
 const StatusBadge = ({ status }: { status: string }) => {
@@ -146,6 +154,9 @@ const BatchPage: React.FC = () => {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const queryClient = useQueryClient();
   const { currentPage, pageSize, handlePageChange, handlePageSizeChange } = usePagination();
+  const [selectedConfig, setSelectedConfig] = useState<string | null>(null);
+  const [isConfigDialogOpen, setIsConfigDialogOpen] = useState(false);
+  const [selectedBatchId, setSelectedBatchId] = useState<string | null>(null);
 
   const { data: batches, isLoading } = useQuery({
     queryKey: ['batches', currentPage, pageSize],
@@ -162,6 +173,11 @@ const BatchPage: React.FC = () => {
   const { data: groups } = useQuery({
     queryKey: ['groups'],
     queryFn: () => groupApi.getGroups(1, 20), // Fetch groups
+  });
+
+  const { data: configs } = useQuery({
+    queryKey: ['configs'],
+    queryFn: () => configApi.getConfigs(1, 100),
   });
 
   const filteredBatches = batches?.spyderBatches.items.filter(batch => 
@@ -194,6 +210,22 @@ const BatchPage: React.FC = () => {
     },
   });
 
+  const scrapeMutation = useMutation({
+    mutationFn: ({ batchId, configId }: { batchId: string; configId: string }) => 
+      batchApi.scrapeAdsByBatch(batchId, configId),
+    onSuccess: (data) => {
+      if (data.success) {
+        toast.success(data.message);
+      } else {
+        toast.error(data.message || 'Failed to scrape ads for batch');
+      }
+    },
+    onError: (error) => {
+      console.error('Scrape error:', error);
+      toast.error('Failed to scrape ads for batch');
+    },
+  });
+
   const onSubmit = async (values: BatchFormValues) => {
     try {
       const input: CreateSpyderBatchInput = {
@@ -220,6 +252,19 @@ const BatchPage: React.FC = () => {
 
   const getBatchProgress = (batch: SpyderBatch) => {
     return 0; // TODO: Implement actual progress calculation
+  };
+
+  const handleScrapeClick = (batchId: string) => {
+    setSelectedBatchId(batchId);
+    setIsConfigDialogOpen(true);
+  };
+
+  const handleConfigSelect = (configId: string) => {
+    if (selectedBatchId) {
+      scrapeMutation.mutate({ batchId: selectedBatchId, configId });
+      setIsConfigDialogOpen(false);
+      setSelectedBatchId(null);
+    }
   };
 
   return (
@@ -424,10 +469,10 @@ const BatchPage: React.FC = () => {
           </div>
 
           {isLoading ? (
-            <Loader className="text-center py-20">
-              <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-spyder-teal mb-4"></div>
-              <p>Loading batches...</p>
-            </Loader>
+            <div className="flex items-center justify-center py-20">
+              <Loader className="h-8 w-8 animate-spin" />
+              <p className="ml-2">Loading batches...</p>
+            </div>
           ) : filteredBatches?.length === 0 ? (
             <Card className="py-16">
               <CardContent className="flex flex-col items-center justify-center text-center">
@@ -449,111 +494,92 @@ const BatchPage: React.FC = () => {
               </CardContent>
             </Card>
           ) : (
-            <div className="flex flex-col min-h-[calc(100vh-12rem)]">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {filteredBatches?.map((batch) => (
-                  <Card key={batch.id} className="card-hover">
-                    <CardHeader className="pb-2">
-                      <div className="flex justify-between items-start mb-1">
-                        <CardTitle className="text-lg">Batch {batch.id}</CardTitle>
+            <div className="rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Batch ID</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Country</TableHead>
+                    <TableHead>Group</TableHead>
+                    <TableHead>Start Date</TableHead>
+                    <TableHead>End Date</TableHead>
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredBatches?.map((batch) => (
+                    <TableRow key={batch.id}>
+                      <TableCell className="font-medium">Batch {batch.id}</TableCell>
+                      <TableCell>
                         <StatusBadge status={batch.status} />
-                      </div>
-                    </CardHeader>
-                    <CardContent className="pb-2">
-                      <div className="grid grid-cols-1 gap-4 mb-4">
-                        <div className="space-y-1">
-                          <div className="flex items-center text-sm gap-1">
-                            <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
-                            <span className="text-muted-foreground">Start Date:</span>
-                            <span>{formatDisplayDate(batch.start_date)}</span>
-                          </div>
-                          <div className="flex items-center text-sm gap-1">
-                            <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
-                            <span className="text-muted-foreground">End Date:</span>
-                            <span>{formatDisplayDate(batch.end_date)}</span>
-                          </div>
+                      </TableCell>
+                      <TableCell>{batch.batchCountry?.name}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <span>{batch.associatedGroup?.name}</span>
+                          {batch.associatedGroup?.status === "ACTIVE" ? (
+                            <span className="h-2 w-2 rounded-full bg-green-500" />
+                          ) : (
+                            <span className="h-2 w-2 rounded-full bg-red-500" />
+                          )}
                         </div>
-                        <div className="space-y-2">
-                          <div className="flex justify-between items-center text-sm">
-                            <span>Country:</span>
-                            <span className="font-medium">{batch.batchCountry?.name}</span>
-                          </div>
-                          <div className="flex justify-between items-center text-sm">
-                            <span>Group:</span>
-                            <span className="font-medium flex items-center gap-2">
-                              <span> {batch.associatedGroup?.name}</span>
-                              {batch.associatedGroup?.status === "ACTIVE" ? (
-                                <span className="h-2 w-2 rounded-full bg-green-500" />
-                              ) : (
-                                <span className="h-2 w-2 rounded-full bg-red-500" />
-                              )}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    </CardContent>
-                    <CardFooter className="pt-0">
-                      <Accordion
-                        type="single"
-                        collapsible
-                        className="w-full"
-                        value={expandedBatchId}
-                        onValueChange={(value) => setExpandedBatchId(value)}
-                      >
-                      </Accordion>
-                    </CardFooter>
-                  </Card>
-                ))}
-              </div>
-              {batches?.spyderBatches?.pagination && (
-                <div className="mt-auto pt-6">
-                  <div className="flex flex-col gap-4">
-                    <div className="flex items-center justify-between">
-                      <div className="text-sm text-muted-foreground">
-                        Showing page {currentPage} of {batches.spyderBatches.pagination.totalPages}
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm text-muted-foreground">Items per page:</span>
-                        <Select
-                          value={pageSize.toString()}
-                          onValueChange={(value) => handlePageSizeChange(Number(value))}
+                      </TableCell>
+                      <TableCell>{formatDisplayDate(batch.start_date)}</TableCell>
+                      <TableCell>{formatDisplayDate(batch.end_date)}</TableCell>
+                      <TableCell>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="bg-spyder-teal text-white hover:bg-spyder-teal/80"
+                          onClick={() => handleScrapeClick(batch.id)}
+                          disabled={scrapeMutation.isPending}
                         >
-                          <SelectTrigger className="h-8 w-[70px]">
-                            <SelectValue placeholder={pageSize} />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="10">10</SelectItem>
-                            <SelectItem value="20">20</SelectItem>
-                            <SelectItem value="50">50</SelectItem>
-                            <SelectItem value="100">100</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-center space-x-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handlePageChange(currentPage - 1)}
-                        disabled={currentPage === 1}
-                      >
-                        <ChevronLeft className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handlePageChange(currentPage + 1)}
-                        disabled={currentPage >= batches.spyderBatches.pagination.totalPages}
-                      >
-                        <ChevronRight className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              )}
+                          {scrapeMutation.isPending ? 'Scraping...' : 'Scrape Ads'}
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+
+          {batches?.spyderBatches?.pagination && (
+            <div className="mt-4">
+              <Pagination
+                currentPage={currentPage}
+                totalPages={batches.spyderBatches.pagination.totalPages}
+                onPageChange={handlePageChange}
+                pageSize={pageSize}
+                onPageSizeChange={handlePageSizeChange}
+              />
             </div>
           )}
         </div>
+
+        <Dialog open={isConfigDialogOpen} onOpenChange={setIsConfigDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Select Configuration</DialogTitle>
+              <DialogDescription>
+                Choose a configuration to use for scraping ads
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              {configs?.spyderConfigs.items.map((config) => (
+                <Button
+                  key={config.id}
+                  variant="outline"
+                  className="justify-start"
+                  onClick={() => handleConfigSelect(config.id)}
+                >
+                  {config.name}
+                </Button>
+              ))}
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </DashboardLayout>
   );

@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -17,6 +16,8 @@ import SettingsPage from "./pages/SettingsPage";
 import NotFound from "./pages/NotFound";
 import Index from "./pages/Index";
 import GroupPage from "./pages/GroupPage";
+import LanderPage from "./pages/LanderPage";
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -41,8 +42,8 @@ const App = () => (
               <Route path="/ads" element={<AdPage />} />
               <Route path="/batches" element={<BatchPage />} /> 
               <Route path="/groups" element={<GroupPage />} />
+              <Route path="/landers" element={<LanderPage />} />
               <Route path="/settings" element={<SettingsPage />} />
-              
               {/* 404 Page */}
               <Route path="*" element={<NotFound />} />
             </Routes>

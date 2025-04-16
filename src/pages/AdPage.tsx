@@ -23,7 +23,12 @@ import {
   VolumeX,
   X,
   XCircle,
-  ZoomIn
+  ZoomIn,
+  Globe,
+  Building2,
+  Flag,
+  Layers,
+  Languages
 } from 'lucide-react';
 import React, { useEffect, useRef, useState } from 'react';
 
@@ -314,7 +319,7 @@ export default function AdPage() {
               <Card key={ad.id} className="overflow-hidden group">
                 <div className="aspect-video relative bg-gray-100">
                   {ad.original_image_url ? (
-                    <div className="relative aspect-video">
+                    <div className="relative aspect-video group">
                       <img
                         src={ad.original_image_url}
                         alt={ad.title}
@@ -325,13 +330,51 @@ export default function AdPage() {
                         }}
                       />
                       <div 
-                        className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer"
+                        className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-between cursor-pointer"
                         onClick={() => {
                           setFullscreenImage(ad.original_image_url);
                           setIsImageFullscreen(true);
                         }}
                       >
-                        <ZoomIn className="h-8 w-8 text-white" />
+                        <div className="absolute top-2 left-2 right-2 text-white text-xs">
+                          <div className="flex flex-col gap-2">
+                            <div className="flex items-center gap-2 bg-white/10 px-2 py-1 rounded">
+                              <Globe className="h-3 w-3 text-blue-300" />
+                              <span className="font-medium">{ad.domain.domain}</span>
+                            </div>
+                            <div className="flex items-center gap-2 bg-white/10 px-2 py-1 rounded">
+                              <Building2 className="h-3 w-3 text-purple-300" />
+                              <span className="font-medium">{ad.company.name}</span>
+                            </div>
+                            <div className="flex items-center gap-2 bg-white/10 px-2 py-1 rounded">
+                              <Languages className="h-3 w-3 text-green-300" />
+                              <span className="font-medium">{ad.language.name}</span>
+                            </div>
+                            <div className="flex items-center gap-2 bg-white/10 px-2 py-1 rounded">
+                              <Flag className="h-3 w-3 text-yellow-300" />
+                              <div className="flex flex-wrap gap-1">
+                                {ad.countries.map((country) => (
+                                  <Badge key={country.id} variant="secondary" className="text-xs bg-white/10 text-white border-white/20">
+                                    {country.name}
+                                  </Badge>
+                                ))}
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2 bg-white/10 px-2 py-1 rounded">
+                              <Layers className="h-3 w-3 text-red-300" />
+                              <div className="flex flex-wrap gap-1">
+                                {ad.batches.map((batch) => (
+                                  <Badge key={batch.id} variant="secondary" className="text-xs bg-white/10 text-white border-white/20">
+                                    {batch.id}
+                                  </Badge>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="absolute bottom-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
+                          <ZoomIn className="h-8 w-8 text-white" />
+                        </div>
                       </div>
                     </div>
                   ) : ad.original_video_url ? (
@@ -356,6 +399,42 @@ export default function AdPage() {
                           }));
                         }}
                       />
+                      <div className="absolute top-2 left-2 right-2 text-white text-xs opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="flex flex-col gap-2">
+                          <div className="flex items-center gap-2 bg-white/10 px-2 py-1 rounded">
+                            <Globe className="h-3 w-3 text-blue-300" />
+                            <span className="font-medium">{ad.domain.domain}</span>
+                          </div>
+                          <div className="flex items-center gap-2 bg-white/10 px-2 py-1 rounded">
+                            <Building2 className="h-3 w-3 text-purple-300" />
+                            <span className="font-medium">{ad.company.name}</span>
+                          </div>
+                          <div className="flex items-center gap-2 bg-white/10 px-2 py-1 rounded">
+                            <Languages className="h-3 w-3 text-green-300" />
+                            <span className="font-medium">{ad.language.name}</span>
+                          </div>
+                          <div className="flex items-center gap-2 bg-white/10 px-2 py-1 rounded">
+                            <Flag className="h-3 w-3 text-yellow-300" />
+                            <div className="flex flex-wrap gap-1">
+                              {ad.countries.map((country) => (
+                                <Badge key={country.id} variant="secondary" className="text-xs bg-white/10 text-white border-white/20">
+                                  {country.name}
+                                </Badge>
+                              ))}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2 bg-white/10 px-2 py-1 rounded">
+                            <Layers className="h-3 w-3 text-red-300" />
+                            <div className="flex flex-wrap gap-1">
+                              {ad.batches.map((batch) => (
+                                <Badge key={batch.id} variant="secondary" className="text-xs bg-white/10 text-white border-white/20">
+                                  {batch.id}
+                                </Badge>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
                       <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
                         <div className="flex items-center gap-2">
                           <button
@@ -396,69 +475,22 @@ export default function AdPage() {
                     </div>
                   )}
                 </div>
-                <CardContent className="p-4 space-y-3">
+                <CardContent className="p-3 space-y-2">
                   <div>
-                    <h3 className="font-medium line-clamp-2">{ad.title}</h3>
-                    <p className="text-sm text-muted-foreground line-clamp-2 mt-1">{ad.body}</p>
+                    <h3 className="font-medium text-sm line-clamp-2">{ad.title}</h3>
+                    <p className="text-xs text-muted-foreground line-clamp-2 mt-1">{ad.body}</p>
                   </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Vendor:</span>
-                    <span>{ad.vendor.name}</span>
-                  </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Company:</span>
-                    <span>{ad.company.name}</span>
-                  </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Format:</span>
-                    <span>{ad.display_format}</span>
-                  </div>
-                  <div className="flex flex-wrap justify-between gap-1">
-                    <span className="text-muted-foreground">Countries:</span>
-                    {ad.countries.map((country) => (
-                      <Badge key={country.id} variant="secondary">
-                        {country.name}
-                      </Badge>
-                    ))}
-                  </div>
-                  <div className="flex flex-wrap justify-between gap-1">
-                    <span className="text-muted-foreground">Batch:</span>
-                    {ad.batches.map((batch) => (
-                      <Badge key={batch.id} variant="secondary">
-                        {batch.id}
-                      </Badge>
-                    ))}
-                  </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Language:</span>
-                    <span>{ad.language.name}</span>
-                  </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Domain:</span>
-                    <span className="truncate">{ad.domain.domain}</span>
-                  </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Period:</span>
-                    <span className="text-right">
-                      {formatDate(ad.startDate)} - {formatDate(ad.endDate)}
-                    </span>
-                  </div>
-                  <div className="pt-2">
-                    <Button
-                      variant="outline"
-                      className="w-full"
-                      onClick={() => {
-                        if (ad.link_url) {
-                          const newWindow = window.open(ad.link_url, '_blank');
-                          if (newWindow) {
-                            newWindow.opener = null;
-                          }
-                        }
-                      }}
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-muted-foreground">Link:</span>
+                    <a 
+                      href={ad.link_url} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:underline truncate max-w-[200px]"
+                      title={ad.link_url}
                     >
-                      <Eye className="h-4 w-4 mr-2" />
-                      View ad
-                    </Button>
+                      {ad.link_url}
+                    </a>
                   </div>
                 </CardContent>
               </Card>

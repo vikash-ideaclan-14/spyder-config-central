@@ -678,7 +678,26 @@ export const batchApi = {
       toast.error('Failed to create batch');
       throw error;
     }
-  }
+  },
+
+  scrapeAdsByBatch: async (spyderBatchId: string, spyderConfigId: string): Promise<{ message: string; success: boolean }> => {
+    try {
+      const { data, errors } = await client.mutate<{ scrapeAdsByBatch: { message: string; success: boolean } }>({
+        mutation: SCRAPE_ADS_BY_BATCH_MUTATION,
+        variables: { spyderBatchId, spyderConfigId },
+      });
+
+      if (errors || !data?.scrapeAdsByBatch) {
+        throw new Error('Failed to scrape ads for batch');
+      }
+
+      return data.scrapeAdsByBatch;
+    } catch (error) {
+      console.error('Scrape ads error:', error);
+      toast.error('Failed to scrape ads for batch');
+      throw error;
+    }
+  },
 };
 
 // Define the query
@@ -1088,8 +1107,26 @@ const CREATE_GROUP_MUTATION: DocumentNode = gql`
 
 const DELETE_GROUP_MUTATION: DocumentNode = gql`
   mutation DeleteSpyedGroup($id: ID!) {
-    deleteSpyedGroup(id: $id) {
-      success
+    deleteSpyedGroup(id: $id)
+  }
+`;
+
+const UPDATE_GROUP_MUTATION: DocumentNode = gql`
+  mutation UpdateSpyedGroup($id: ID!, $input: SpyedGroupInput!) {
+    updateSpyedGroup(id: $id, input: $input) {
+      id
+      name
+      status
+      createdAt
+      updatedAt
+      company {
+        id
+        name
+      }
+      vendor {
+        id
+        name
+      }
     }
   }
 `;
@@ -1110,15 +1147,26 @@ export const groupApi = {
 
   createGroup: async (input: CreateSpyedGroupInput): Promise<CreateSpyedGroupResponse> => {
     try {
-      console.log("CreateSpyedGroup", input);
       const { data } = await client.mutate<CreateSpyedGroupResponse>({
         mutation: CREATE_GROUP_MUTATION,
         variables: { input },
       });
-      console.log("CreateSpyedGroup", data);
       return data;
     } catch (error) {
       toast.error('Failed to create group');
+      throw error;
+    }
+  },
+
+  updateGroup: async (id: string, input: CreateSpyedGroupInput): Promise<CreateSpyedGroupResponse> => {
+    try {
+      const { data } = await client.mutate<CreateSpyedGroupResponse>({
+        mutation: UPDATE_GROUP_MUTATION,
+        variables: { id, input },
+      });
+      return data;
+    } catch (error) {
+      toast.error('Failed to update group');
       throw error;
     }
   },
@@ -1136,3 +1184,84 @@ export const groupApi = {
     }
   },
 };
+
+export interface Lander {
+  id: string;
+  lander_url: string;
+  lander_domain: string;
+  processed: boolean;
+  last_processed: string | null;
+  adsCount: number;
+  createdAt: string;
+  updatedAt: string;
+  countries: {
+    id: string;
+    code: string;
+    name: string;
+    createdAt: string;
+    updatedAt: string;
+  }[];
+}
+
+export interface LandersResponse {
+  landers: {
+    items: Lander[];
+    pagination: PaginationInfo;
+  };
+}
+
+const GET_LANDERS_QUERY: DocumentNode = gql`
+  query Landers($pagination: PaginationInput) {
+    landers(pagination: $pagination) {
+      items {
+        id
+        lander_url
+        lander_domain
+        processed
+        last_processed
+        adsCount
+        createdAt
+        updatedAt
+        countries {
+          id
+          code
+          name
+          createdAt
+          updatedAt
+        }
+      }
+      pagination {
+        total
+        page
+        pageSize
+        totalPages
+        hasNextPage
+        hasPreviousPage
+      }
+    }
+  }
+`;
+
+export const landerApi = {
+  getLanders: async (page = 1, pageSize = 10): Promise<LandersResponse> => {
+    try {
+      const { data } = await client.query<LandersResponse>({
+        query: GET_LANDERS_QUERY,
+        variables: { pagination: { page, pageSize } },
+      });
+      return data;
+    } catch (error) {
+      toast.error('Failed to fetch landers');
+      throw error;
+    }
+  },
+};
+
+const SCRAPE_ADS_BY_BATCH_MUTATION = gql`
+  mutation ScrapeAdsByBatch($spyderBatchId: ID!, $spyderConfigId: ID!) {
+    scrapeAdsByBatch(spyderBatchId: $spyderBatchId, spyderConfigId: $spyderConfigId) {
+      message
+      success
+    }
+  }
+`;

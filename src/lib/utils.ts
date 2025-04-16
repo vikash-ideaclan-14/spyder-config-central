@@ -6,7 +6,11 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export const formatDate = (date: string | number) => {
-  const parsedDate = typeof date === 'string' ? new Date(date) : new Date(Number(date));
+  // If it's a string, try to parse it as a number first
+  const timestamp = typeof date === 'string' ? parseInt(date) : date;
+  
+  // Create date from timestamp (multiply by 1000 for milliseconds)
+  const parsedDate = new Date(timestamp);
   
   if (isNaN(parsedDate.getTime())) {
     return 'Invalid Date';

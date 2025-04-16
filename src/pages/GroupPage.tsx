@@ -75,9 +75,13 @@ const SpyderGroupPage: React.FC = () => {
   const queryClient = useQueryClient();
   const { currentPage, pageSize, handlePageChange, handlePageSizeChange } = usePagination();
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, refetch } = useQuery({
     queryKey: ['groups', currentPage, pageSize],
     queryFn: () => groupApi.getGroups(currentPage, pageSize),
+    refetchOnWindowFocus: true,
+    refetchOnMount: true,
+    staleTime: 0,
+    gcTime: 0,
   });
 
   const { data: companies } = useQuery({
@@ -102,8 +106,9 @@ const SpyderGroupPage: React.FC = () => {
 
   const createMutation = useMutation({
     mutationFn: (values: GroupFormValues) => groupApi.createGroup(values),
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['groups'] });
+    onSuccess: async (data) => {
+      await queryClient.invalidateQueries({ queryKey: ['groups'] });
+      await queryClient.refetchQueries({ queryKey: ['groups'] });
       setIsCreateDialogOpen(false);
       form.reset();
       toast.success('Group created successfully');
@@ -116,8 +121,9 @@ const SpyderGroupPage: React.FC = () => {
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => groupApi.deleteGroup(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['groups'] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['groups'] });
+      await queryClient.refetchQueries({ queryKey: ['groups'] });
       toast.success('Group deleted successfully');
     },
     onError: () => {
@@ -125,8 +131,27 @@ const SpyderGroupPage: React.FC = () => {
     },
   });
 
+  const editMutation = useMutation({
+    mutationFn: (values: GroupFormValues) => groupApi.updateGroup(selectedGroup?.id || '', values),
+    onSuccess: async (data) => {
+      await queryClient.invalidateQueries({ queryKey: ['groups'] });
+      await queryClient.refetchQueries({ queryKey: ['groups'] });
+      setIsEditDialogOpen(false);
+      setSelectedGroup(null);
+      form.reset();
+      toast.success('Group updated successfully');
+    },
+    onError: () => {
+      toast.error('Failed to update group');
+    },
+  });
+
   const onSubmit = async (values: GroupFormValues) => {
-    createMutation.mutate(values);
+    if (selectedGroup) {
+      editMutation.mutate(values);
+    } else {
+      createMutation.mutate(values);
+    }
   };
 
   const handleDelete = (id: string) => {
