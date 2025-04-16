@@ -102,13 +102,14 @@ const SpyderGroupPage: React.FC = () => {
 
   const createMutation = useMutation({
     mutationFn: (values: GroupFormValues) => groupApi.createGroup(values),
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['groups'] });
       setIsCreateDialogOpen(false);
       form.reset();
       toast.success('Group created successfully');
     },
-    onError: () => {
+    onError: (error) => {
+      console.error('Create group error:', error);
       toast.error('Failed to create group');
     },
   });
@@ -125,11 +126,7 @@ const SpyderGroupPage: React.FC = () => {
   });
 
   const onSubmit = async (values: GroupFormValues) => {
-    if (selectedGroup) {
-      createMutation.mutate(values);
-    } else {
-      createMutation.mutate(values);
-    }
+    createMutation.mutate(values);
   };
 
   const handleDelete = (id: string) => {

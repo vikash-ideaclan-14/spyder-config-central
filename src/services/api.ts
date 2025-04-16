@@ -1067,7 +1067,7 @@ const GET_GROUPS_QUERY: DocumentNode = gql`
 `;
 
 const CREATE_GROUP_MUTATION: DocumentNode = gql`
-  mutation CreateSpyedGroup($input: CreateSpyedGroupInput!) {
+  mutation CreateSpyedGroup($input: SpyedGroupInput!) {
     createSpyedGroup(input: $input) {
       id
       name
@@ -1087,8 +1087,8 @@ const CREATE_GROUP_MUTATION: DocumentNode = gql`
 `;
 
 const DELETE_GROUP_MUTATION: DocumentNode = gql`
-  mutation DeleteGroup($id: ID!) {
-    deleteGroup(id: $id) {
+  mutation DeleteSpyedGroup($id: ID!) {
+    deleteSpyedGroup(id: $id) {
       success
     }
   }
@@ -1110,10 +1110,12 @@ export const groupApi = {
 
   createGroup: async (input: CreateSpyedGroupInput): Promise<CreateSpyedGroupResponse> => {
     try {
+      console.log("CreateSpyedGroup", input);
       const { data } = await client.mutate<CreateSpyedGroupResponse>({
         mutation: CREATE_GROUP_MUTATION,
         variables: { input },
       });
+      console.log("CreateSpyedGroup", data);
       return data;
     } catch (error) {
       toast.error('Failed to create group');
@@ -1123,11 +1125,11 @@ export const groupApi = {
 
   deleteGroup: async (id: string): Promise<{ success: boolean }> => {
     try {
-      const { data } = await client.mutate<{ deleteGroup: { success: boolean } }>({
+      const { data } = await client.mutate<{ deleteSpyedGroup: { success: boolean } }>({
         mutation: DELETE_GROUP_MUTATION,
         variables: { id },
       });
-      return data.deleteGroup;
+      return data.deleteSpyedGroup;
     } catch (error) {
       toast.error('Failed to delete group');
       throw error;
