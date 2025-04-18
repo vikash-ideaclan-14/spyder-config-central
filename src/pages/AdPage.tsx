@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { usePagination } from '@/hooks/usePagination';
 import { formatDate } from '@/lib/utils';
 import { Ad, adApi } from '@/services/api';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import {
   CheckCircle2,
   ChevronLeft,
@@ -31,9 +31,11 @@ import {
   Languages
 } from 'lucide-react';
 import React, { useEffect, useRef, useState } from 'react';
+import { toast } from 'react-hot-toast';
+import { queryClient } from '@/lib/queryClient';
 
 interface VideoState {
-  isPlaying: boolean;
+  isPlaying: boolean;               
   isMuted: boolean;
   currentTime: number;
   duration: number;
@@ -101,6 +103,33 @@ export default function AdPage() {
     placeholderData: (previousData) => previousData,
     staleTime: 5000,
   });
+
+  // const deleteMutation = useMutation({
+  //   mutationFn: (id: string) => adApi.deleteAd(id),
+  //   onSuccess: async (data) => {
+  //     await queryClient.invalidateQueries({ queryKey: ['ads'] });
+  //     await queryClient.refetchQueries({ queryKey: ['ads'] });
+  //     toast.success('Ad deleted successfully');
+  //   },
+  //   onError: (error) => {
+  //     toast.error('Failed to delete ad');
+  //   }
+  // });
+
+  // const updateMutation = useMutation({
+  //   mutationFn: ({ id, input }: { id: string; input: AdFormValues }) => 
+  //     adApi.updateAd(id, input),
+  //   onSuccess: async (data) => {
+  //     await queryClient.invalidateQueries({ queryKey: ['ads'] });
+  //     await queryClient.refetchQueries({ queryKey: ['ads'] });
+  //     setIsEditDialogOpen(false);
+  //     setSelectedAd(null);
+  //     toast.success('Ad updated successfully');
+  //   },
+  //   onError: (error) => {
+  //     toast.error('Failed to update ad');
+  //   }
+  // });
 
   // Cleanup video refs on unmount
   useEffect(() => {

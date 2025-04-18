@@ -38,6 +38,7 @@ export interface Domain extends BaseEntity {
 export interface Vendor extends BaseEntity {
   name: string;
   description: string;
+  type: string;
 }
 
 export interface Company extends BaseEntity {
@@ -927,19 +928,9 @@ export interface SpyderGroupsResponse {
   };
 }
 
-export interface Company {
-  id: string;
+export interface CompanyInput {
   name: string;
   description: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface CompaniesResponse {
-  companies: {
-    items: Company[];
-    pagination: PaginationInfo;
-  };
 }
 
 export interface Vendor {
@@ -948,6 +939,7 @@ export interface Vendor {
   description: string;
   createdAt: string;
   updatedAt: string;
+  type: string;
 }
 
 export interface VendorsResponse {
@@ -1010,7 +1002,20 @@ export const companyApi = {
       toast.error('Failed to fetch companies');
       throw error;
     }
-  }
+  },
+
+  getCompany: async (id: string): Promise<Company> => {
+    try {
+      const response = await client.query<{ company: Company }>({
+        query: gql(GET_COMPANY_QUERY),
+        variables: { companyId: id }
+      });
+      return response.data.company;
+    } catch (error) {
+      console.error('Error fetching company:', error);
+      throw error;
+    }
+  },
 };
 
 export const vendorApi = {
@@ -1023,6 +1028,7 @@ export const vendorApi = {
               id
               name
               description
+              type
               createdAt
               updatedAt
             }
@@ -1054,7 +1060,51 @@ export const vendorApi = {
       toast.error('Failed to fetch vendors');
       throw error;
     }
-  }
+  },
+
+  getVendor: async (id: string): Promise<Vendor> => {
+    try {
+      const response = await client.query<{ vendor: Vendor }>({
+        query: gql(GET_VENDOR_QUERY),
+        variables: { vendorId: id }
+      });
+      return response.data.vendor;
+    } catch (error) {
+      console.error('Error fetching vendor:', error);
+      throw error;
+    }
+  },
+
+  updateVendor: async (id: string, input: VendorInput): Promise<Vendor> => {
+    try {
+      const { data } = await client.mutate<{ updateVendor: Vendor }>({
+        mutation: UPDATE_VENDOR_MUTATION,
+        variables: {
+          updateVendorId: id,
+          input,
+        },
+      });
+      return data.updateVendor;
+    } catch (error) {
+      console.error('Error updating vendor:', error);
+      throw error;
+    }
+  },
+
+  deleteVendor: async (id: string): Promise<boolean> => {
+    try {
+      const { data } = await client.mutate<{ deleteVendor: boolean }>({
+        mutation: DELETE_VENDOR_MUTATION,
+        variables: {
+          deleteVendorId: id,
+        },
+      });
+      return data.deleteVendor;
+    } catch (error) {
+      console.error('Error deleting vendor:', error);
+      throw error;
+    }
+  },
 };
 
 const GET_GROUPS_QUERY: DocumentNode = gql`
@@ -1270,6 +1320,62 @@ const GET_LANDERS_QUERY: DocumentNode = gql`
   }
 `;
 
+const CREATE_LANDER_MUTATION = gql`
+  mutation CreateLander($input: LanderInput!) {
+    createLander(input: $input) {
+      id
+      lander_url
+      lander_domain
+      processed
+      last_processed
+      adsCount
+      createdAt
+      updatedAt
+      countries {
+        id
+        code
+        name
+        createdAt
+        updatedAt
+      }
+    }
+  }
+`;
+
+const UPDATE_LANDER_MUTATION = gql`
+  mutation UpdateLander($id: ID!, $input: LanderInput!) {
+    updateLander(id: $id, input: $input) {
+      id
+      lander_url
+      lander_domain
+      processed
+      last_processed
+      adsCount
+      createdAt
+      updatedAt
+      countries {
+        id
+        code
+        name
+        createdAt
+        updatedAt
+      }
+    }
+  }
+`;
+
+const DELETE_LANDER_MUTATION = gql`
+  mutation DeleteLander($id: ID!) {
+    deleteLander(id: $id)
+  }
+`;
+
+interface LanderInput {
+  lander_url: string;
+  lander_domain: string;
+  countryIds: string[];
+}
+
 export const landerApi = {
   getLanders: async (page = 1, pageSize = 10): Promise<LandersResponse> => {
     try {
@@ -1280,6 +1386,45 @@ export const landerApi = {
       return data;
     } catch (error) {
       toast.error('Failed to fetch landers');
+      throw error;
+    }
+  },
+
+  createLander: async (input: LanderInput): Promise<Lander> => {
+    try {
+      const { data } = await client.mutate<{ createLander: Lander }>({
+        mutation: CREATE_LANDER_MUTATION,
+        variables: { input },
+      });
+      return data.createLander;
+    } catch (error) {
+      toast.error('Failed to create lander');
+      throw error;
+    }
+  },
+
+  updateLander: async (id: string, input: LanderInput): Promise<Lander> => {
+    try {
+      const { data } = await client.mutate<{ updateLander: Lander }>({
+        mutation: UPDATE_LANDER_MUTATION,
+        variables: { id, input },
+      });
+      return data.updateLander;
+    } catch (error) {
+      toast.error('Failed to update lander');
+      throw error;
+    }
+  },
+
+  deleteLander: async (id: string): Promise<boolean> => {
+    try {
+      const { data } = await client.mutate<{ deleteLander: boolean }>({
+        mutation: DELETE_LANDER_MUTATION,
+        variables: { id },
+      });
+      return data.deleteLander;
+    } catch (error) {
+      toast.error('Failed to delete lander');
       throw error;
     }
   },
@@ -1297,6 +1442,7 @@ const SCRAPE_ADS_BY_BATCH_MUTATION = gql`
 export interface Domain {
   id: string;
   domain: string;
+  type: string;
   createdAt: string;
   updatedAt: string;
   domainVendor: Vendor;
@@ -1310,25 +1456,25 @@ export interface DomainsResponse {
   };
 }
 
-const GET_DOMAINS_QUERY: DocumentNode = gql`
+const GET_DOMAINS_QUERY = gql`
   query Domains($pagination: PaginationInput) {
     domains(pagination: $pagination) {
       items {
         id
         domain
+        type
         createdAt
         updatedAt
         domainVendor {
           id
           name
-          description
+          type
           createdAt
           updatedAt
         }
         domainCompany {
           id
           name
-          description
           createdAt
           updatedAt
         }
@@ -1345,17 +1491,427 @@ const GET_DOMAINS_QUERY: DocumentNode = gql`
   }
 `;
 
+const GET_DOMAIN_QUERY = gql`
+  query Domain($domainId: ID!) {
+    domain(id: $domainId) {
+      id
+      domain
+      createdAt
+      updatedAt
+      domainVendor {
+        id
+        name
+        type
+        createdAt
+        updatedAt
+      }
+      domainCompany {
+        id
+        name
+        createdAt
+        updatedAt
+      }
+    }
+  }
+`;
+
+const UPDATE_DOMAIN_MUTATION = gql`
+  mutation UpdateDomain($updateDomainId: ID!, $input: DomainInput!) {
+    updateDomain(id: $updateDomainId, input: $input) {
+      id
+      domain
+      createdAt
+      updatedAt
+      domainVendor {
+        id
+        name
+        type
+        createdAt
+        updatedAt
+      }
+      domainCompany {
+        id
+        name
+        createdAt
+        updatedAt
+      }
+    }
+  }
+`;
+
+const DELETE_DOMAIN_MUTATION = gql`
+  mutation DeleteDomain($deleteDomainId: ID!) {
+    deleteDomain(id: $deleteDomainId)
+  }
+`;
+
 export const domainApi = {
-  getDomains: async (page = 1, pageSize = 100): Promise<DomainsResponse> => {
+  getDomains: async (page?: number, pageSize?: number): Promise<DomainsResponse> => {
     try {
       const { data } = await client.query<DomainsResponse>({
         query: GET_DOMAINS_QUERY,
-        variables: { pagination: { page, pageSize } },
+        variables: {
+          pagination: {
+            page: page || 1,
+            pageSize: pageSize || 10,
+          },
+        },
       });
       return data;
     } catch (error) {
-      toast.error('Failed to fetch domains');
+      console.error('Error fetching domains:', error);
+      throw error;
+    }
+  },
+  getDomain: async (id: string): Promise<Domain> => {
+    const response = await client.query<{ domain: Domain }>({
+      query: GET_DOMAIN_QUERY,
+      variables: { domainId: id },
+    });
+    return response.data.domain;
+  },
+  updateDomain: async (id: string, input: DomainInput): Promise<Domain> => {
+    const response = await client.mutate<{ updateDomain: Domain }>({
+      mutation: UPDATE_DOMAIN_MUTATION,
+      variables: { updateDomainId: id, input },
+    });
+    return response.data.updateDomain;
+  },
+};
+
+const CREATE_VENDOR_MUTATION = gql`
+  mutation CreateVendor($input: VendorInput!) {
+    createVendor(input: $input) {
+      id
+      name
+      description
+      createdAt
+      updatedAt
+    }
+  }
+`;
+
+const CREATE_COMPANY_MUTATION = gql`
+  mutation CreateCompany($input: CompanyInput!) {
+    createCompany(input: $input) {
+      id
+      name
+      description
+      createdAt
+      updatedAt
+    }
+  }
+`;
+
+const CREATE_DOMAIN_MUTATION = gql`
+  mutation CreateDomain($input: DomainInput!) {
+    createDomain(input: $input) {
+      id
+      domain
+      createdAt
+      updatedAt
+      domainVendor {
+        id
+        name
+        createdAt
+        updatedAt
+      }
+      domainCompany {
+        id
+        name
+        createdAt
+        updatedAt
+      }
+    }
+  }
+`;
+
+export interface VendorInput {
+  name: string;
+  description: string;
+  type: string;
+}
+
+export interface CompanyInput {
+  name: string;
+  description: string;
+}
+
+export interface DomainInput {
+  domain: string;
+  companyId: string;
+  vendorId: string;
+  type: string;
+}
+
+const UPDATE_VENDOR_MUTATION = gql`
+  mutation UpdateVendor($input: VendorInput!, $updateVendorId: ID!) {
+    updateVendor(input: $input, id: $updateVendorId) {
+      id
+      name
+      description
+      type
+      createdAt
+      updatedAt
+    }
+  }
+`;
+
+const DELETE_VENDOR_MUTATION = gql`
+  mutation DeleteVendor($deleteVendorId: ID!) {
+    deleteVendor(id: $deleteVendorId)
+  }
+`;
+
+const UPDATE_COMPANY_MUTATION = gql`
+  mutation UpdateCompany($updateCompanyId: ID!, $input: CompanyUpdateInput!) {
+    updateCompany(id: $updateCompanyId, input: $input) {
+      id
+      name
+      description
+      createdAt
+      updatedAt
+    }
+  }
+`;
+
+const DELETE_COMPANY_MUTATION = gql`
+  mutation DeleteCompany($deleteCompanyId: ID!) {
+    deleteCompany(id: $deleteCompanyId)
+  }
+`;
+
+export interface UpdateDomainResponse {
+  updateDomain: Domain;
+}
+
+const GET_COMPANIES_QUERY = gql`
+  query Companies($pagination: PaginationInput) {
+    companies(pagination: $pagination) {
+      items {
+        id
+        name
+        description
+        createdAt
+        updatedAt
+      }
+      pagination {
+        total
+        page
+        pageSize
+        totalPages
+        hasNextPage
+        hasPreviousPage
+      }
+    }
+  }
+`;
+
+const GET_COMPANY_QUERY = `
+  query Company($companyId: ID!) {
+    company(id: $companyId) {
+      id
+      name
+      description
+      createdAt
+      updatedAt
+    }
+  }
+`;
+
+const GET_VENDOR_QUERY = `
+  query Vendor($vendorId: ID!) {
+    vendor(id: $vendorId) {
+      id
+      name
+      description
+      createdAt
+      updatedAt
+    }
+  }
+`;
+
+// First define all GraphQL queries and mutations
+const GET_VENDORS_QUERY = gql`
+  query GetVendors($pagination: PaginationInput!) {
+    vendors(pagination: $pagination) {
+      items {
+        id
+        name
+        description
+        type
+        createdAt
+        updatedAt
+      }
+      pagination {
+        total
+        page
+        pageSize
+        totalPages
+        hasNextPage
+        hasPreviousPage
+      }
+    }
+  }
+`;
+
+// Then export the miscellaneousApi object
+export const miscellaneousApi = {
+  getVendors: async (page: number = 1, pageSize: number = 10): Promise<VendorsResponse> => {
+    try {
+      const { data } = await client.query<VendorsResponse>({
+        query: GET_VENDORS_QUERY,
+        variables: {
+          pagination: {
+            page,
+            pageSize
+          }
+        }
+      });
+      return data;
+    } catch (error) {
+      console.error('Error fetching vendors:', error);
+      throw error;
+    }
+  },
+
+  createVendor: async (input: VendorInput) => {
+    try {
+      const { data } = await client.mutate<{ createVendor: Vendor }>({
+        mutation: CREATE_VENDOR_MUTATION,
+        variables: { input },
+      });
+      return data.createVendor;
+    } catch (error) {
+      toast.error('Failed to create vendor');
+      throw error;
+    }
+  },
+
+  createCompany: async (input: CompanyInput) => {
+    try {
+      const { data } = await client.mutate<{ createCompany: Company }>({
+        mutation: CREATE_COMPANY_MUTATION,
+        variables: { input },
+      });
+      return data.createCompany;
+    } catch (error) {
+      toast.error('Failed to create company');
+      throw error;
+    }
+  },
+
+  createDomain: async (input: DomainInput) => {
+    try {
+      const { data } = await client.mutate<{ createDomain: Domain }>({
+        mutation: CREATE_DOMAIN_MUTATION,
+        variables: { input },
+      });
+      return data.createDomain;
+    } catch (error) {
+      toast.error('Failed to create domain');
+      throw error;
+    }
+  },
+
+  updateVendor: async (id: string, input: VendorInput): Promise<Vendor> => {
+    try {
+      const { data } = await client.mutate<{ updateVendor: Vendor }>({
+        mutation: UPDATE_VENDOR_MUTATION,
+        variables: {
+          updateVendorId: id,
+          input,
+        },
+      });
+      return data.updateVendor;
+    } catch (error) {
+      console.error('Error updating vendor:', error);
+      throw error;
+    }
+  },
+
+  deleteVendor: async (id: string): Promise<boolean> => {
+    try {
+      const { data } = await client.mutate<{ deleteVendor: boolean }>({
+        mutation: DELETE_VENDOR_MUTATION,
+        variables: {
+          deleteVendorId: id,
+        },
+      });
+      return data.deleteVendor;
+    } catch (error) {
+      console.error('Error deleting vendor:', error);
+      throw error;
+    }
+  },
+
+  updateCompany: async (id: string, input: CompanyInput): Promise<Company> => {
+    try {
+      const { data } = await client.mutate<{ updateCompany: Company }>({
+        mutation: UPDATE_COMPANY_MUTATION,
+        variables: {
+          updateCompanyId: id,
+          input,
+        },
+      });
+      console.log('Company updated successfully', data);
+      return data.updateCompany;
+    } catch (error) {
+      console.error('Error updating company:', error);
+      throw error;
+    }
+  },
+
+  deleteCompany: async (id: string): Promise<boolean> => {
+    try {
+      const { data } = await client.mutate<GraphQLResponse<{ deleteCompany: boolean }>>({
+        mutation: DELETE_COMPANY_MUTATION,
+        variables: {
+          deleteCompanyId: id,
+        },
+      });
+      return data.data.deleteCompany;
+    } catch (error) {
+      console.error('Error deleting company:', error);
+      throw error;
+    }
+  },
+
+  updateDomain: async (id: string, input: DomainInput): Promise<Domain> => {
+    try {
+      const { data } = await client.mutate<{ updateDomain: Domain }>({
+        mutation: UPDATE_DOMAIN_MUTATION,
+        variables: {
+          updateDomainId: id,
+          input,
+        },
+      });
+      return data.updateDomain;
+    } catch (error) {
+      console.error('Error updating domain:', error);
+      throw error;
+    }
+  },
+
+  deleteDomain: async (id: string): Promise<boolean> => {
+    try {
+      const { data } = await client.mutate<GraphQLResponse<{ deleteDomain: boolean }>>({
+        mutation: DELETE_DOMAIN_MUTATION,
+        variables: {
+          deleteDomainId: id,
+        },
+      });
+      return data.data.deleteDomain;
+    } catch (error) {
+      console.error('Error deleting domain:', error);
       throw error;
     }
   },
 };
+
+export interface CompaniesResponse {
+  companies: {
+    items: Company[];
+    pagination: PaginationInfo;
+  };
+}

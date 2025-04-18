@@ -53,6 +53,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
     { path: '/batches', label: 'Spyder Batches', icon: <Layers size={20} /> },
     { path: '/groups', label: 'Spyder Groups', icon: <Layers size={20} /> },
     { path: '/landers', label: 'Landers', icon: <Layers size={20} /> },
+    { path: '/miscellaneous', label: 'Miscellaneous', icon: <Layers size={20} /> },
     { path: '/settings', label: 'Settings', icon: <Settings size={20} /> },
   ];
 

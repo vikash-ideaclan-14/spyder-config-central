@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { Search, Loader, ExternalLink, BarChart2, Clock, Globe, Calendar, MapPin } from 'lucide-react';
+import { useQuery, useMutation } from '@tanstack/react-query';
+import { Search, Loader, ExternalLink, BarChart2, Clock, Globe, Calendar, MapPin, Plus, Pencil, Trash2 } from 'lucide-react';
 import { formatDate } from '@/lib/utils';
 import { landerApi } from '@/services/api';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
@@ -11,10 +11,33 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { toast } from 'react-hot-toast';
+import { useQueryClient } from '@tanstack/react-query';
+import { useForm } from 'react-hook-form';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+
+interface LanderFormValues {
+  lander_url: string;
+  lander_domain: string;
+  countryIds: string[];
+}
 
 const LanderPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [selectedLander, setSelectedLander] = useState<any>(null);
   const { currentPage, pageSize, handlePageChange, handlePageSizeChange, pageInput, handlePageInputChange, handlePageInputSubmit } = usePagination();
+  const queryClient = useQueryClient();
+
+  const form = useForm<LanderFormValues>({
+    defaultValues: {
+      lander_url: '',
+      lander_domain: '',
+      countryIds: [],
+    },
+  });
 
   const { data, isLoading } = useQuery({
     queryKey: ['landers', currentPage, pageSize],
@@ -30,6 +53,70 @@ const LanderPage: React.FC = () => {
     lander.lander_domain.toLowerCase().includes(searchTerm.toLowerCase())
   ) || [];
   
+  const createMutation = useMutation({
+    mutationFn: (values: LanderFormValues) => landerApi.createLander(values),
+    onSuccess: async (data) => {
+      await queryClient.invalidateQueries({ queryKey: ['landers'] });
+      await queryClient.refetchQueries({ queryKey: ['landers'] });
+      setIsCreateDialogOpen(false);
+      form.reset();
+      toast.success('Lander created successfully');
+    },
+    onError: (error) => {
+      console.error('Create lander error:', error);
+      toast.error('Failed to create lander');
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => landerApi.deleteLander(id),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['landers'] });
+      await queryClient.refetchQueries({ queryKey: ['landers'] });
+      toast.success('Lander deleted successfully');
+    },
+    onError: () => {
+      toast.error('Failed to delete lander');
+    },
+  });
+
+  const editMutation = useMutation({
+    mutationFn: (values: LanderFormValues) => landerApi.updateLander(selectedLander?.id || '', values),
+    onSuccess: async (data) => {
+      await queryClient.invalidateQueries({ queryKey: ['landers'] });
+      await queryClient.refetchQueries({ queryKey: ['landers'] });
+      setIsEditDialogOpen(false);
+      setSelectedLander(null);
+      form.reset();
+      toast.success('Lander updated successfully');
+    },
+    onError: () => {
+      toast.error('Failed to update lander');
+    },
+  });
+
+  const onSubmit = (values: LanderFormValues) => {
+    if (selectedLander) {
+      editMutation.mutate(values);
+    } else {
+      createMutation.mutate(values);
+    }
+  };
+
+  const handleEdit = (lander: any) => {
+    setSelectedLander(lander);
+    form.reset({
+      lander_url: lander.lander_url,
+      lander_domain: lander.lander_domain,
+      countryIds: lander.countries.map((c: any) => c.id),
+    });
+    setIsEditDialogOpen(true);
+  };
+
+  const handleDelete = (id: string) => {
+    deleteMutation.mutate(id);
+  };
+
   if (isLoading) {
     return (
       <DashboardLayout>
@@ -51,9 +138,6 @@ const LanderPage: React.FC = () => {
                 Manage and monitor lander URLs
               </p>
             </div>
-            <Button variant="outline" className="bg-spyder-teal hover:bg-spyder-teal/90 text-white">
-              Add New Lander
-            </Button>
           </div>
 
           <div className="relative">
