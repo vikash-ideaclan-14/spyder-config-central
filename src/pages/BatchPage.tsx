@@ -1,34 +1,25 @@
-import React, { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { toast } from 'sonner';
-import { 
-  ChevronRight, 
-  ChevronDown, 
-  Calendar, 
-  Filter, 
-  Plus, 
-  AlertCircle,
-  CheckCircle2,
-  Clock,
-  SearchX,
-  Loader,
-  ChevronLeft
-} from 'lucide-react';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  Filter,
+  Loader,
+  Plus,
+  SearchX
+} from 'lucide-react';
+import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
+import { toast } from 'sonner';
 import * as z from 'zod';
-import { z as zod } from 'zod';
 
+import { DashboardLayout } from '@/components/layout/DashboardLayout';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
 import {
   Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
+  CardContent
 } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -37,23 +28,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from '@/components/ui/accordion';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Badge } from '@/components/ui/badge';
-import { SpyderBatch, batchApi, CreateSpyderBatchInput, countryApi, groupApi, configApi } from '@/services/api';
-import { DashboardLayout } from '@/components/layout/DashboardLayout';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { formatDate } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
-import { usePagination } from '@/hooks/usePagination';
-import { Pagination } from '@/components/ui/pagination';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   Table,
   TableBody,
@@ -62,6 +39,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { usePagination } from '@/hooks/usePagination';
+import { CreateSpyderBatchInput, SpyderBatch, batchApi, configApi, countryApi, groupApi } from '@/services/api';
 
 // Helper component for status badge
 const StatusBadge = ({ status }: { status: string }) => {
@@ -158,7 +137,7 @@ const BatchPage: React.FC = () => {
   const [isConfigDialogOpen, setIsConfigDialogOpen] = useState(false);
   const [selectedBatchId, setSelectedBatchId] = useState<string | null>(null);
 
-  const { data: batches, isLoading } = useQuery({
+  const { data: batches, isLoading , refetch: refetchBatches } = useQuery({
     queryKey: ['batches', currentPage, pageSize],
     queryFn: () => batchApi.getBatches({
       pagination: { page: currentPage, pageSize },
@@ -200,7 +179,7 @@ const BatchPage: React.FC = () => {
         return batchApi.createBatch(values)
       },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['batches'] });
+
       setIsCreateDialogOpen(false);
       form.reset();
       toast.success('Batch created successfully');
@@ -228,21 +207,27 @@ const BatchPage: React.FC = () => {
 
   const onSubmit = async (values: BatchFormValues) => {
     try {
+      // Convert timestamp strings to ISO format for the server
+      const startDate = new Date(parseInt(values.startDate)).toISOString();
+      const endDate = new Date(parseInt(values.endDate)).toISOString();
+
       const input: CreateSpyderBatchInput = {
         countryId: values.countryId,
-        endDate: values.endDate,
+        endDate: endDate,
         spyderGroupId: values.spyderGroupId,
-        startDate: values.startDate,
+        startDate: startDate,
         status: values.status
       };
 
       await batchApi.createBatch(input);
       toast.success("Batch created successfully");
+      refetchBatches()
       form.reset();
       setIsCreateDialogOpen(false);
       queryClient.invalidateQueries({ queryKey: ["batches"] });
     } catch (error) {
       toast.error("Failed to create batch");
+      console.error("Create batch error:", error);
     }
   };
 
@@ -399,12 +384,10 @@ const BatchPage: React.FC = () => {
                             <FormControl>
                               <Input 
                                 type="datetime-local" 
-                                value={field.value}
+                                value={field.value ? new Date(parseInt(field.value)).toISOString().slice(0, 16) : ''}
                                 onChange={(e) => {
-                                  const timestamp = parseDateInput(e.target.value);
-                                  if (timestamp) {
-                                    field.onChange(timestamp);
-                                  }
+                                  const date = new Date(e.target.value);
+                                  field.onChange(date.getTime().toString());
                                 }}
                               />
                             </FormControl>
@@ -421,12 +404,10 @@ const BatchPage: React.FC = () => {
                             <FormControl>
                               <Input 
                                 type="datetime-local" 
-                                value={field.value}
+                                value={field.value ? new Date(parseInt(field.value)).toISOString().slice(0, 16) : ''}
                                 onChange={(e) => {
-                                  const timestamp = parseDateInput(e.target.value);
-                                  if (timestamp) {
-                                    field.onChange(timestamp);
-                                  }
+                                  const date = new Date(e.target.value);
+                                  field.onChange(date.getTime().toString());
                                 }}
                               />
                             </FormControl>
@@ -448,8 +429,8 @@ const BatchPage: React.FC = () => {
                               </FormControl>
                               <SelectContent>
                                 <SelectItem value="ACTIVE">Active</SelectItem>
-                                <SelectItem value="UPCOMING">Upcoming</SelectItem>
-                                <SelectItem value="COMPLETED">Completed</SelectItem>
+                                {/* <SelectItem value="UPCOMING">Upcoming</SelectItem>
+                                <SelectItem value="COMPLETED">Completed</SelectItem> */}
                               </SelectContent>
                             </Select>
                             <FormMessage />

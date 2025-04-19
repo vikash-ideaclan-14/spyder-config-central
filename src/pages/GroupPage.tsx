@@ -77,7 +77,7 @@ const SpyderGroupPage: React.FC = () => {
   const queryClient = useQueryClient();
   const { currentPage, pageSize, handlePageChange, handlePageSizeChange, pageInput, handlePageInputChange, handlePageInputSubmit } = usePagination();
 
-  const { data, isLoading, refetch } = useQuery({
+  const { data, isLoading } = useQuery({
     queryKey: ['groups', currentPage, pageSize],
     queryFn: () => groupApi.getGroups(currentPage, pageSize),
     refetchOnWindowFocus: true,
