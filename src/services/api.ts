@@ -681,6 +681,24 @@ export const batchApi = {
     }
   },
 
+  deleteBatch: async (spyderBatchId: string): Promise<{ message: string; success: boolean }> => {
+    try {
+      const mutation = gql`
+        mutation DeleteSpyderBatch($deleteSpyderBatchId: ID!) {
+          deleteSpyderBatch(id: $deleteSpyderBatchId)
+        }
+      `;
+      const response = await client.mutate<{ deleteSpyderBatch: { message: string; success: boolean } }>({
+        mutation,
+        variables: { deleteSpyderBatchId: spyderBatchId },
+      });
+      return response.data.deleteSpyderBatch;
+    } catch (error) {
+      toast.error('Failed to delete batch');
+      throw error;
+    }
+  },
+
   scrapeAdsByBatch: async (spyderBatchId: string, spyderConfigId: string): Promise<{ message: string; success: boolean }> => {
     try {
       const { data, errors } = await client.mutate<{ scrapeAdsByBatch: { message: string; success: boolean } }>({

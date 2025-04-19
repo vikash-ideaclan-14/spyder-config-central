@@ -137,11 +137,11 @@ const BatchPage: React.FC = () => {
   const [isConfigDialogOpen, setIsConfigDialogOpen] = useState(false);
   const [selectedBatchId, setSelectedBatchId] = useState<string | null>(null);
 
-  const { data: batches, isLoading , refetch: refetchBatches } = useQuery({
+  const { data: batches, isLoading, refetch: refetchBatches } = useQuery({
     queryKey: ['batches', currentPage, pageSize],
     queryFn: () => batchApi.getBatches({
       pagination: { page: currentPage, pageSize },
-    }),   
+    }),
   });
 
   const { data: countries } = useQuery({
@@ -159,7 +159,7 @@ const BatchPage: React.FC = () => {
     queryFn: () => configApi.getConfigs(1, 100),
   });
 
-  const filteredBatches = batches?.spyderBatches.items.filter(batch => 
+  const filteredBatches = batches?.spyderBatches.items.filter(batch =>
     selectedStatus === 'all' || batch.status === selectedStatus
   );
 
@@ -175,11 +175,10 @@ const BatchPage: React.FC = () => {
   });
 
   const createMutation = useMutation({
-      mutationFn: (values: BatchFormValues) => {
-        return batchApi.createBatch(values)
-      },
+    mutationFn: (values: BatchFormValues) => {
+      return batchApi.createBatch(values)
+    },
     onSuccess: () => {
-
       setIsCreateDialogOpen(false);
       form.reset();
       toast.success('Batch created successfully');
@@ -190,7 +189,7 @@ const BatchPage: React.FC = () => {
   });
 
   const scrapeMutation = useMutation({
-    mutationFn: ({ batchId, configId }: { batchId: string; configId: string }) => 
+    mutationFn: ({ batchId, configId }: { batchId: string; configId: string }) =>
       batchApi.scrapeAdsByBatch(batchId, configId),
     onSuccess: (data) => {
       if (data.success) {
@@ -221,10 +220,10 @@ const BatchPage: React.FC = () => {
 
       await batchApi.createBatch(input);
       toast.success("Batch created successfully");
-      refetchBatches()
       form.reset();
       setIsCreateDialogOpen(false);
-      queryClient.invalidateQueries({ queryKey: ["batches"] });
+      // Invalidate the batches query to trigger a refetch
+      queryClient.invalidateQueries({ queryKey: ['batches'] });
     } catch (error) {
       toast.error("Failed to create batch");
       console.error("Create batch error:", error);
@@ -252,6 +251,12 @@ const BatchPage: React.FC = () => {
     }
   };
 
+  const handleDeleteClick = (batchId: string) => {
+    batchApi.deleteBatch(batchId);
+    toast.success("Batch deleted successfully");
+    queryClient.invalidateQueries({ queryKey: ['batches'] });
+  };
+
   return (
     <DashboardLayout>
       <div className="flex flex-col min-h-[calc(100vh-4rem)]">
@@ -263,13 +268,13 @@ const BatchPage: React.FC = () => {
                 Manage and monitor batch processing tasks
               </p>
             </div>
-            
+
             <div className="flex flex-col sm:flex-row gap-3">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" className="flex items-center gap-2">
                     <Filter className="h-4 w-4" />
-                    {selectedStatus === 'all' ? 'All Statuses' : 
+                    {selectedStatus === 'all' ? 'All Statuses' :
                       `${selectedStatus.charAt(0).toUpperCase() + selectedStatus.slice(1)}`}
                   </Button>
                 </DropdownMenuTrigger>
@@ -277,32 +282,32 @@ const BatchPage: React.FC = () => {
                   <DropdownMenuLabel>Filter by Status</DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={() => setSelectedStatus('all')}>
-                    <Checkbox 
-                      id="all" 
+                    <Checkbox
+                      id="all"
                       checked={selectedStatus === 'all'}
                       className="mr-2 h-4 w-4"
                     />
                     All Statuses
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => setSelectedStatus('active')}>
-                    <Checkbox 
-                      id="active" 
+                    <Checkbox
+                      id="active"
                       checked={selectedStatus === 'active'}
                       className="mr-2 h-4 w-4"
                     />
                     Active
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => setSelectedStatus('completed')}>
-                    <Checkbox 
-                      id="completed" 
+                    <Checkbox
+                      id="completed"
                       checked={selectedStatus === 'completed'}
                       className="mr-2 h-4 w-4"
                     />
                     Completed
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => setSelectedStatus('upcoming')}>
-                    <Checkbox 
-                      id="upcoming" 
+                    <Checkbox
+                      id="upcoming"
                       checked={selectedStatus === 'upcoming'}
                       className="mr-2 h-4 w-4"
                     />
@@ -310,7 +315,7 @@ const BatchPage: React.FC = () => {
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
-              
+
               <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
                 <DialogTrigger asChild>
                   <Button>
@@ -382,8 +387,8 @@ const BatchPage: React.FC = () => {
                           <FormItem>
                             <FormLabel>Start Date</FormLabel>
                             <FormControl>
-                              <Input 
-                                type="datetime-local" 
+                              <Input
+                                type="datetime-local"
                                 value={field.value ? new Date(parseInt(field.value)).toISOString().slice(0, 16) : ''}
                                 onChange={(e) => {
                                   const date = new Date(e.target.value);
@@ -402,8 +407,8 @@ const BatchPage: React.FC = () => {
                           <FormItem>
                             <FormLabel>End Date</FormLabel>
                             <FormControl>
-                              <Input 
-                                type="datetime-local" 
+                              <Input
+                                type="datetime-local"
                                 value={field.value ? new Date(parseInt(field.value)).toISOString().slice(0, 16) : ''}
                                 onChange={(e) => {
                                   const date = new Date(e.target.value);
@@ -465,8 +470,8 @@ const BatchPage: React.FC = () => {
                     : 'No batches match your current filter'}
                 </p>
                 {selectedStatus !== 'all' && (
-                  <Button 
-                    variant="outline" 
+                  <Button
+                    variant="outline"
                     onClick={() => setSelectedStatus('all')}
                   >
                     Show All Batches
@@ -517,6 +522,16 @@ const BatchPage: React.FC = () => {
                           disabled={scrapeMutation.isPending}
                         >
                           {scrapeMutation.isPending ? 'Scraping...' : 'Scrape Ads'}
+                        </Button>
+                      </TableCell>
+                      <TableCell>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="bg-spyder-white text-red-500 hover:bg-spyder-white/80"
+                          onClick={() => handleDeleteClick(batch.id)}
+                        >
+                          x
                         </Button>
                       </TableCell>
                     </TableRow>
