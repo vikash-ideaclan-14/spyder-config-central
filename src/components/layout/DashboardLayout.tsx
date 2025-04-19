@@ -50,8 +50,8 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
     { path: '/dashboard', label: 'Dashboard', icon: <LayoutDashboard size={20} /> },
     { path: '/configs', label: 'Configurations', icon: <Cog size={20} /> },
     { path: '/ads', label: 'Advertisements', icon: <FileText size={20} /> },
-    { path: '/batches', label: 'Spyder Batches', icon: <Layers size={20} /> },
-    { path: '/groups', label: 'Spyder Groups', icon: <Layers size={20} /> },
+    { path: '/batches', label: 'Batches', icon: <Layers size={20} /> },
+    { path: '/groups', label: 'Groups', icon: <Layers size={20} /> },
     { path: '/landers', label: 'Landers', icon: <Layers size={20} /> },
     { path: '/miscellaneous', label: 'Miscellaneous', icon: <Layers size={20} /> },
     { path: '/settings', label: 'Settings', icon: <Settings size={20} /> },
@@ -62,7 +62,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children }) =>
       {/* Desktop Sidebar */}
       <aside className="hidden md:flex md:w-64 flex-col bg-spyder-dark-blue shrink-0">
         <div className="p-4 flex items-center justify-center border-b border-spyder-dark-blue/50">
-          <h1 className="text-white text-xl font-bold">Spyder Config</h1>
+          <h1 className="text-white text-xl font-bold">Spyder</h1>
         </div>
 
         <div className="flex-1 py-6 px-4 flex flex-col gap-1">

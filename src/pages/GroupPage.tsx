@@ -317,19 +317,52 @@ const SpyderGroupPage: React.FC = () => {
                         <FormItem>
                           <FormLabel>Domains</FormLabel>
                           <Select
-                            onValueChange={(value) => field.onChange([...field.value, value])}
-                            value={field.value[field.value.length - 1]}
+                            onValueChange={(value) => {
+                              if (field.value.includes(value)) {
+                                field.onChange(field.value.filter(id => id !== value));
+                              } else {
+                                field.onChange([...field.value, value]);
+                              }
+                            }}
+                            value=""
                           >
                             <FormControl>
                               <SelectTrigger>
-                                <SelectValue placeholder="Select domains" />
+                                <div className="flex flex-wrap gap-1">
+                                  {field.value.length === 0 ? (
+                                    <SelectValue placeholder="Select domains" />
+                                  ) : (
+                                    <span className="text-sm">
+                                      {field.value.map((id) => {
+                                        const domain = domains?.domains.items.find((d) => d.id === id);
+                                        return domain ? domain.domain : '';
+                                      }).join(', ')}
+                                    </span>
+                                  )}
+                                </div>
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
                               {domains?.domains.items.map((domain) => (
-                                <SelectItem key={domain.id} value={domain.id}>
-                                  {domain.domain}
-                                </SelectItem>
+                                <div
+                                  key={domain.id}
+                                  className="flex items-center gap-2 p-2 hover:bg-accent cursor-pointer"
+                                  onClick={() => {
+                                    if (field.value.includes(domain.id)) {
+                                      field.onChange(field.value.filter(id => id !== domain.id));
+                                    } else {
+                                      field.onChange([...field.value, domain.id]);
+                                    }
+                                  }}
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={field.value.includes(domain.id)}
+                                    readOnly
+                                    className="h-4 w-4 rounded border-gray-300"
+                                  />
+                                  <span>{domain.domain}</span>
+                                </div>
                               ))}
                             </SelectContent>
                           </Select>
@@ -619,19 +652,49 @@ const SpyderGroupPage: React.FC = () => {
                   <FormItem>
                     <FormLabel>Domains</FormLabel>
                     <Select
-                      onValueChange={(value) => field.onChange([...field.value, value])}
-                      value={field.value[field.value.length - 1]}
+                      onValueChange={(value) => {
+                        if (field.value.includes(value)) {
+                          field.onChange(field.value.filter(id => id !== value));
+                        } else {
+                          field.onChange([...field.value, value]);
+                        }
+                      }}
+                      value=""
                     >
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="Select domains" />
+                          <div className="flex flex-wrap gap-1">
+                            {field.value.length === 0 ? (
+                              <SelectValue placeholder="Select domains" />
+                            ) : (
+                              <span className="text-sm">
+                                {field.value.length} domains selected
+                              </span>
+                            )}
+                          </div>
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
                         {domains?.domains.items.map((domain) => (
-                          <SelectItem key={domain.id} value={domain.id}>
-                            {domain.domain}
-                          </SelectItem>
+                          <div
+                            key={domain.id}
+                            className="flex items-center gap-2 p-2 hover:bg-accent cursor-pointer"
+                            onClick={() => {
+                              if (field.value.includes(domain.id)) {
+                                field.onChange(field.value.filter(id => id !== domain.id));
+                              } else {
+                                field.onChange([...field.value, domain.id]);
+                              }
+                            }}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={field.value.includes(domain.id)}
+                              readOnly
+                              className="h-4 w-4 rounded border-gray-300"
+                            />
+                            <span>{domain.domain}</span>
+                          </div>
                         ))}
                       </SelectContent>
                     </Select>
