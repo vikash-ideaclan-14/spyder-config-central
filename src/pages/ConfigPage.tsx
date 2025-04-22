@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -57,6 +57,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Loader } from '@/components/ui/loader';
+import { setBatches, setError } from '@/store/slices/batchSlice';
+import { setLoading } from '@/store/slices/batchSlice';
+import { useAppDispatch, useAppSelector } from '@/store';
+import { createConfig, deleteConfig, deleteConfigById, fetchConfigById, setConfigs, setSelectedConfig, updateConfigById } from '@/store/slices/configSlice';
 
 const configFormSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
@@ -69,6 +73,7 @@ const configFormSchema = z.object({
 });
 
 type ConfigFormValues = {
+  id?: string;
   name: string;
   cookie: string;
   asbd_id: string;
@@ -78,25 +83,30 @@ type ConfigFormValues = {
   raw_data: string;
 };
 
+type FormMode = 'create' | 'edit';
+
 const ConfigPage: React.FC = () => {
+  const dispatch = useAppDispatch();
+  const { configs } = useAppSelector((state) => state.config);
+  const { selectedConfig } = useAppSelector((state) => state.config);
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedConfig, setSelectedConfig] = useState<SpyderConfig | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [validationTimeout, setValidationTimeout] = useState<NodeJS.Timeout | null>(null);
   const [pageInput, setPageInput] = useState('');
+  const [formMode, setFormMode] = useState<FormMode>('create');
 
   const form = useForm<ConfigFormValues>({
     resolver: zodResolver(configFormSchema),
     defaultValues: {
-      name: "",
-      cookie: "",
-      asbd_id: "",
-      lsd: "",
-      doc_id_1: "",
-      doc_id_2: "",
-      raw_data: "",
+      id: '',
+      name: '',
+      cookie: '',
+      asbd_id: '',
+      lsd: '',
+      doc_id_1: '',
+      doc_id_2: '',
+      raw_data: ''
     },
   });
 
@@ -123,12 +133,11 @@ const ConfigPage: React.FC = () => {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, input }: { id: string; input: ConfigFormValues }) => 
+    mutationFn: ({ id, input }: { id: string; input: ConfigFormValues }) =>
       configApi.updateConfig(id, input),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['configs'] });
-      setIsEditDialogOpen(false);
-      setSelectedConfig(null);
+      setIsDialogOpen(false);
       toast.success('Config updated successfully');
     },
     onError: (error) => {
@@ -141,7 +150,6 @@ const ConfigPage: React.FC = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['configs'] });
       setIsDeleteDialogOpen(false);
-      setSelectedConfig(null);
       toast.success('Config deleted successfully');
     },
     onError: (error) => {
@@ -165,19 +173,8 @@ const ConfigPage: React.FC = () => {
     setIsDialogOpen(open);
     if (!open) {
       form.reset();
-      form.clearErrors();
-      if (validationTimeout) {
-        clearTimeout(validationTimeout);
-        setValidationTimeout(null);
-      }
-    }
-  };
-
-  // Handle edit dialog open/close
-  const handleEditDialogOpenChange = (open: boolean) => {
-    setIsEditDialogOpen(open);
-    if (!open) {
-      form.reset();
+      setFormMode('create');
+      dispatch(setSelectedConfig(null));
       form.clearErrors();
       if (validationTimeout) {
         clearTimeout(validationTimeout);
@@ -194,44 +191,97 @@ const ConfigPage: React.FC = () => {
     return () => subscription.unsubscribe();
   }, [form]);
 
-  // Cleanup timeout on unmount
-  React.useEffect(() => {
-    return () => {
-      if (validationTimeout) {
-        clearTimeout(validationTimeout);
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        dispatch(setLoading(true));
+        const [configsData] = await Promise.all([
+          configApi.getConfigs(1, 100),
+        ]);
+        dispatch(setConfigs(configsData.spyderConfigs.items));
+      } catch (error) {
+        dispatch(setError('Failed to fetch data'));
+        toast.error('Failed to fetch data');
+      } finally {
+        dispatch(setLoading(false));
       }
     };
-  }, [validationTimeout]);
 
-  const handleCreateConfig = (values: ConfigFormValues) => {
-    createMutation.mutate(values);
-  };
+    fetchData();
+  }, [currentPage, pageSize, dispatch]);
 
-  const handleUpdateConfig = (values: ConfigFormValues) => {
-    if (selectedConfig) {
-      updateMutation.mutate({ id: selectedConfig.id, input: values });
+  useEffect(() => {
+    if (selectedConfig && formMode === 'edit') {
+      form.reset({
+        id: selectedConfig.id,
+        name: selectedConfig.name,
+        cookie: selectedConfig.cookie,
+        asbd_id: selectedConfig.asbd_id,
+        lsd: selectedConfig.lsd,
+        doc_id_1: selectedConfig.doc_id_1,
+        doc_id_2: selectedConfig.doc_id_2,
+        raw_data: selectedConfig.raw_data
+      });
+    }
+  }, [selectedConfig, form, formMode]);
+
+  const handleConfigSubmit = async (values: ConfigFormValues) => {
+    try {
+      dispatch(setLoading(true));
+      if (formMode === 'create') {
+        await dispatch(createConfig({
+          name: values.name,
+          cookie: values.cookie,
+          asbd_id: values.asbd_id,
+          lsd: values.lsd,
+          doc_id_1: values.doc_id_1,
+          doc_id_2: values.doc_id_2,
+          raw_data: values.raw_data
+        }));
+      } else if (formMode === 'edit' && values.id) {
+        await dispatch(updateConfigById(values.id, {
+          name: values.name,
+          cookie: values.cookie,
+          asbd_id: values.asbd_id,
+          lsd: values.lsd,
+          doc_id_1: values.doc_id_1,
+          doc_id_2: values.doc_id_2,
+          raw_data: values.raw_data
+        }));
+      }
+      dispatch(setLoading(false));
+      setIsDialogOpen(false);
+      form.reset();
+      toast.success(`Config ${formMode === 'create' ? 'created' : 'updated'} successfully`);
+    } catch (error) {
+      dispatch(setLoading(false));
+      toast.error(`Failed to ${formMode === 'create' ? 'create' : 'update'} config`);
     }
   };
 
-  const handleDeleteConfig = (id: string) => {
-    deleteMutation.mutate(id);
-  };
-
-  const handleEditClick = (config: SpyderConfig) => {
-    setSelectedConfig(config);
+  const handleEditConfig = (config: SpyderConfig) => {
+    setFormMode('edit');
+    dispatch(setSelectedConfig(config));
     form.reset({
+      id: config.id,
       name: config.name,
       cookie: config.cookie,
       asbd_id: config.asbd_id,
       lsd: config.lsd,
       doc_id_1: config.doc_id_1,
       doc_id_2: config.doc_id_2,
-      raw_data: config.raw_data,
+      raw_data: config.raw_data
     });
-    setIsEditDialogOpen(true);
+    setIsDialogOpen(true);
   };
 
-  const filteredConfigs = data?.spyderConfigs.items.filter(config => 
+  const handleDeleteConfig = async (id: string) => {
+    dispatch(setLoading(true));
+    await dispatch(deleteConfigById(id));
+    dispatch(setLoading(false));
+  };
+
+  const filteredConfigs = configs?.filter(config =>
     config.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     config.cookie.toLowerCase().includes(searchTerm.toLowerCase()) ||
     config.asbd_id.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -276,20 +326,37 @@ const ConfigPage: React.FC = () => {
             </div>
             <Dialog open={isDialogOpen} onOpenChange={handleDialogOpenChange}>
               <DialogTrigger asChild>
-                <Button className="bg-spyder-teal hover:bg-spyder-teal/90">
+                <Button 
+                  className="bg-spyder-teal hover:bg-spyder-teal/90"
+                  onClick={() => {
+                    setFormMode('create');
+                    form.reset({
+                      id: '',
+                      name: '',
+                      cookie: '',
+                      asbd_id: '',
+                      lsd: '',
+                      doc_id_1: '',
+                      doc_id_2: '',
+                      raw_data: ''
+                    });
+                  }}
+                >
                   <Plus className="mr-2 h-4 w-4" />
                   Create Config
                 </Button>
               </DialogTrigger>
               <DialogContent className="sm:max-w-[425px]">
                 <DialogHeader>
-                  <DialogTitle>Create New Config</DialogTitle>
+                  <DialogTitle>{formMode === 'create' ? 'Create New Config' : 'Edit Config'}</DialogTitle>
                   <DialogDescription>
-                    Fill in the details for your new spyder configuration.
+                    {formMode === 'create' 
+                      ? 'Fill in the details for your new spyder configuration.'
+                      : 'Update the details for your spyder configuration.'}
                   </DialogDescription>
                 </DialogHeader>
                 <Form {...form}>
-                  <form onSubmit={form.handleSubmit(handleCreateConfig)} className="space-y-4">
+                  <form onSubmit={form.handleSubmit(handleConfigSubmit)} className="space-y-4">
                     <FormField
                       control={form.control}
                       name="name"
@@ -384,10 +451,12 @@ const ConfigPage: React.FC = () => {
                     <DialogFooter>
                       <Button
                         type="submit"
-                        disabled={createMutation.isPending}
+                        disabled={isLoading}
                         className="bg-spyder-teal hover:bg-spyder-teal/90"
                       >
-                        {createMutation.isPending ? 'Creating...' : 'Create Config'}
+                        {isLoading 
+                          ? (formMode === 'create' ? 'Creating...' : 'Updating...')
+                          : (formMode === 'create' ? 'Create Config' : 'Update Config')}
                       </Button>
                     </DialogFooter>
                   </form>
@@ -430,8 +499,8 @@ const ConfigPage: React.FC = () => {
                   No configurations found
                   {searchTerm && (
                     <div className="mt-2">
-                      <Button 
-                        variant="ghost" 
+                      <Button
+                        variant="ghost"
                         onClick={() => setSearchTerm('')}
                         className="text-spyder-teal"
                       >
@@ -479,15 +548,15 @@ const ConfigPage: React.FC = () => {
                                 <Button
                                   variant="ghost"
                                   size="icon"
-                                  onClick={() => handleEditClick(config)}
+                                  onClick={() => handleEditConfig(config)}
                                   className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
                                 >
                                   <Pencil className="h-4 w-4" />
                                 </Button>
                                 <AlertDialog>
                                   <AlertDialogTrigger asChild>
-                                    <Button 
-                                      variant="ghost" 
+                                    <Button
+                                      variant="ghost"
                                       size="icon"
                                       className="text-red-600 hover:text-red-700 hover:bg-red-50"
                                     >
@@ -576,90 +645,6 @@ const ConfigPage: React.FC = () => {
             </div>
           </div>
         )}
-
-        <Dialog open={isEditDialogOpen} onOpenChange={handleEditDialogOpenChange}>
-          <DialogContent className="sm:max-w-[425px]">
-            <DialogHeader>
-              <DialogTitle>Edit Config</DialogTitle>
-              <DialogDescription>
-                Update the details for your spyder configuration.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="grid gap-2">
-                <Input
-                  placeholder="Name"
-                  value={form.getValues('name')}
-                  onChange={(e) => form.setValue('name', e.target.value)}
-                />
-                <Input
-                  placeholder="Cookie"
-                  value={form.getValues('cookie')}
-                  onChange={(e) => form.setValue('cookie', e.target.value)}
-                />
-                <Input
-                  placeholder="ASBD ID"
-                  value={form.getValues('asbd_id')}
-                  onChange={(e) => form.setValue('asbd_id', e.target.value)}
-                />
-                <Input
-                  placeholder="LSD"
-                  value={form.getValues('lsd')}
-                  onChange={(e) => form.setValue('lsd', e.target.value)}
-                />
-                <Input
-                  placeholder="Doc ID 1"
-                  value={form.getValues('doc_id_1')}
-                  onChange={(e) => form.setValue('doc_id_1', e.target.value)}
-                />
-                <Input
-                  placeholder="Doc ID 2"
-                  value={form.getValues('doc_id_2')}
-                  onChange={(e) => form.setValue('doc_id_2', e.target.value)}
-                />
-                <Input
-                  placeholder="Raw Data"
-                  value={form.getValues('raw_data')}
-                  onChange={(e) => form.setValue('raw_data', e.target.value)}
-                />
-              </div>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
-                Cancel
-              </Button>
-              <Button
-                onClick={() => updateMutation.mutate({ id: selectedConfig.id, input: form.getValues() })}
-                disabled={updateMutation.isPending}
-              >
-                {updateMutation.isPending ? 'Updating...' : 'Update'}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-
-        <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Delete Config</DialogTitle>
-              <DialogDescription>
-                Are you sure you want to delete this config? This action cannot be undone.
-              </DialogDescription>
-            </DialogHeader>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
-                Cancel
-              </Button>
-              <Button
-                variant="destructive"
-                onClick={() => deleteMutation.mutate(selectedConfig?.id)}
-                disabled={deleteMutation.isPending}
-              >
-                {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
       </div>
     </DashboardLayout>
   );

@@ -114,11 +114,16 @@ const SpyderGroupPage: React.FC = () => {
 
   const createMutation = useMutation({
     mutationFn: (values: GroupFormValues) => groupApi.createGroup(values),
-    onSuccess: async (data) => {
-      await queryClient.invalidateQueries({ queryKey: ['groups'] });
-      await queryClient.refetchQueries({ queryKey: ['groups'] });
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['groups'] });
       setIsCreateDialogOpen(false);
-      form.reset();
+      form.reset({
+        name: "",
+        status: "ACTIVE",
+        companyIds: [],
+        vendorIds: [],
+        domainIds: []
+      });
       toast.success('Group created successfully');
     },
     onError: (error) => {
@@ -129,9 +134,8 @@ const SpyderGroupPage: React.FC = () => {
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => groupApi.deleteGroup(id),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['groups'] });
-      await queryClient.refetchQueries({ queryKey: ['groups'] });
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['groups'] });
       toast.success('Group deleted successfully');
     },
     onError: () => {
@@ -141,12 +145,17 @@ const SpyderGroupPage: React.FC = () => {
 
   const editMutation = useMutation({
     mutationFn: (values: GroupFormValues) => groupApi.updateGroup(selectedGroup?.id || '', values),
-    onSuccess: async (data) => {
-      await queryClient.invalidateQueries({ queryKey: ['groups'] });
-      await queryClient.refetchQueries({ queryKey: ['groups'] });
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['groups'] });
       setIsEditDialogOpen(false);
       setSelectedGroup(null);
-      form.reset();
+      form.reset({
+        name: "",
+        status: "ACTIVE",
+        companyIds: [],
+        vendorIds: [],
+        domainIds: []
+      });
       toast.success('Group updated successfully');
     },
     onError: () => {

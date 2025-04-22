@@ -117,6 +117,10 @@ export interface SpyderConfigResponse {
   };
 }
 
+export interface SpyderConfigByIdResponse {
+  spyderConfig: SpyderConfig;
+}
+
 // GraphQL response types
 interface GraphQLResponse<T> {
   data: T;
@@ -284,6 +288,37 @@ export const configApi = {
     }
   },
 
+  getConfigById: async (id: string): Promise<SpyderConfig> => {
+    try {
+      const query = gql`
+        query GetConfigById($id: ID!) {
+          spyderConfig(id: $id) {
+            id
+            name
+            cookie
+            asbd_id
+            lsd
+            doc_id_1
+            doc_id_2
+            raw_data
+            createdAt
+            updatedAt
+          }
+        }
+      `;
+
+      const variables = { id };
+      const response = await client.query<SpyderConfigByIdResponse>({
+        query,
+        variables
+      });   
+      return response.data.spyderConfig;
+    } catch (error) {
+      toast.error('Failed to fetch configuration');
+      throw error;
+    }
+  },
+
   createConfig: async (input: Omit<SpyderConfig, 'id' | 'createdAt' | 'updatedAt'>): Promise<SpyderConfig> => {
     try {
       const mutation = gql`
@@ -375,20 +410,6 @@ export const configApi = {
 
 // Delay helper to simulate network latency
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-
-// Mock data
-const mockConfigs: Config[] = Array.from({ length: 10 }, (_, i) => ({
-  id: `config-${i + 1}`,
-  name: `Config name ${i + 1}`,
-  cookie: `Config cookie ${i + 1}`,
-  asbd_id: `Config absd_id ${i + 1}`,
-  lsd: `Config lsd ${i + 1}`,
-  raw_data: `Config raw_data ${i + 1}`,
-  doc_id: `Configdoc_id ${i + 1}`,
-  createdAt: new Date(Date.now() - Math.random() * 10000000000).toISOString(),
-  updatedAt: new Date(Date.now() - Math.random() * 1000000000).toISOString()
-}));
-
 // const mockAds: Ad[] = Array.from({ length: 8 }, (_, i) => ({
 //   id: `ad-${i + 1}`,
 //   title: `Advertisement Title ${i + 1}`,
@@ -440,6 +461,7 @@ export interface CreateSpyderBatchResponse {
 export const batchApi = {
   getBatches: async ({ pagination }: { pagination: { page: number; pageSize: number } }): Promise<SpyderBatchesResponse> => {
     try {
+
       const query = gql`
         query SpyderBatches($pagination: PaginationInput) {
           spyderBatches(pagination: $pagination) {

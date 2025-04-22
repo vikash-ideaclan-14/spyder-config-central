@@ -1,15 +1,35 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 import {
   Filter,
   Loader,
   Plus,
   SearchX
 } from 'lucide-react';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import * as z from 'zod';
+import { useAppDispatch, useAppSelector } from '@/store';
+import { batchApi, configApi, countryApi, groupApi, SpyderBatch, CreateSpyderBatchInput } from '@/services/api';
+import {
+  setBatches,
+  setLoading,
+  setError,
+  addBatch,
+  updateBatch,
+  deleteBatch,
+} from '@/store/slices/batchSlice';
+import {
+  setConfigs,
+} from '@/store/slices/configSlice';
+import {
+  setCountries,
+} from '@/store/slices/countrySlice';
+import {
+  setGroups,
+} from '@/store/slices/groupSlice';
+import { usePagination } from '@/hooks/usePagination';
 
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Badge } from '@/components/ui/badge';
@@ -39,8 +59,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { usePagination } from '@/hooks/usePagination';
-import { CreateSpyderBatchInput, SpyderBatch, batchApi, configApi, countryApi, groupApi } from '@/services/api';
 
 // Helper component for status badge
 const StatusBadge = ({ status }: { status: string }) => {
@@ -128,38 +146,54 @@ const formatDisplayDate = (timestamp: string | number) => {
 };
 
 const BatchPage: React.FC = () => {
+  const dispatch = useAppDispatch();
+  const { batches, loading, error, pagination } = useAppSelector((state) => state.batch);
+  const { configs } = useAppSelector((state) => state.config);
+  const { countries } = useAppSelector((state) => state.country);
+  const { groups } = useAppSelector((state) => state.group);
   const [selectedStatus, setSelectedStatus] = useState<SpyderBatch['status'] | 'all'>('all');
   const [expandedBatchId, setExpandedBatchId] = useState<string | null>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  const queryClient = useQueryClient();
   const { currentPage, pageSize, handlePageChange, handlePageSizeChange, pageInput, handlePageInputChange, handlePageInputSubmit } = usePagination();
   const [selectedConfig, setSelectedConfig] = useState<string | null>(null);
   const [isConfigDialogOpen, setIsConfigDialogOpen] = useState(false);
   const [selectedBatchId, setSelectedBatchId] = useState<string | null>(null);
 
-  const { data: batches, isLoading, refetch: refetchBatches } = useQuery({
-    queryKey: ['batches', currentPage, pageSize],
-    queryFn: () => batchApi.getBatches({
-      pagination: { page: currentPage, pageSize },
-    }),
-  });
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        dispatch(setLoading(true));
+        const [batchesData, countriesData, groupsData, configsData] = await Promise.all([
+          batchApi.getBatches({ pagination: { page: currentPage, pageSize } }),
+          countryApi.getCountries(1, 20),
+          groupApi.getGroups(1, 20),
+          configApi.getConfigs(1, 100),
+        ]);
 
-  const { data: countries } = useQuery({
-    queryKey: ['countries'],
-    queryFn: () => countryApi.getCountries(1, 20), // Fetch all countries
-  });
+        dispatch(setBatches({
+          items: batchesData.spyderBatches.items,
+          pagination: {
+            currentPage: batchesData.spyderBatches.pagination.page,
+            pageSize: batchesData.spyderBatches.pagination.pageSize,
+            totalPages: batchesData.spyderBatches.pagination.totalPages,
+            totalItems: batchesData.spyderBatches.pagination.total || 0,
+          },
+        }));
+        // dispatch(setCountries(countriesData.countries.items));
+        // dispatch(setGroups(groupsData.spyedGroups.items));
+        // dispatch(setConfigs(configsData.spyderConfigs.items));
+      } catch (error) {
+        dispatch(setError('Failed to fetch data'));
+        toast.error('Failed to fetch data');
+      } finally {
+        dispatch(setLoading(false));
+      }
+    };
 
-  const { data: groups } = useQuery({
-    queryKey: ['groups'],
-    queryFn: () => groupApi.getGroups(1, 20), // Fetch groups
-  });
+    fetchData();
+  }, [currentPage, pageSize, dispatch]);
 
-  const { data: configs } = useQuery({
-    queryKey: ['configs'],
-    queryFn: () => configApi.getConfigs(1, 100),
-  });
-
-  const filteredBatches = batches?.spyderBatches.items.filter(batch =>
+  const filteredBatches = batches.filter(batch =>
     selectedStatus === 'all' || batch.status === selectedStatus
   );
 
@@ -178,7 +212,8 @@ const BatchPage: React.FC = () => {
     mutationFn: (values: BatchFormValues) => {
       return batchApi.createBatch(values)
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      dispatch(addBatch(data));
       setIsCreateDialogOpen(false);
       form.reset();
       toast.success('Batch created successfully');
@@ -218,16 +253,17 @@ const BatchPage: React.FC = () => {
         status: values.status
       };
 
-      await batchApi.createBatch(input);
-      toast.success("Batch created successfully");
-      form.reset();
-      setIsCreateDialogOpen(false);
-      // Invalidate the batches query to trigger a refetch
-      queryClient.invalidateQueries({ queryKey: ['batches'] });
+      await createMutation.mutateAsync(input);
     } catch (error) {
       toast.error("Failed to create batch");
       console.error("Create batch error:", error);
     }
+  };
+
+  const handleDeleteClick = (batchId: string) => {
+    batchApi.deleteBatch(batchId);
+    dispatch(deleteBatch(batchId));
+    toast.success("Batch deleted successfully");
   };
 
   const handleCreateBatch = () => {
@@ -249,12 +285,6 @@ const BatchPage: React.FC = () => {
       setIsConfigDialogOpen(false);
       setSelectedBatchId(null);
     }
-  };
-
-  const handleDeleteClick = (batchId: string) => {
-    batchApi.deleteBatch(batchId);
-    toast.success("Batch deleted successfully");
-    queryClient.invalidateQueries({ queryKey: ['batches'] });
   };
 
   return (
@@ -345,7 +375,7 @@ const BatchPage: React.FC = () => {
                                 </SelectTrigger>
                               </FormControl>
                               <SelectContent>
-                                {countries?.countries.items.map((country) => (
+                                {countries.map((country) => (
                                   <SelectItem key={country.id} value={country.id}>
                                     {country.name}
                                   </SelectItem>
@@ -369,7 +399,7 @@ const BatchPage: React.FC = () => {
                                 </SelectTrigger>
                               </FormControl>
                               <SelectContent>
-                                {groups?.spyedGroups.items.map((group) => (
+                                {groups.map((group) => (
                                   <SelectItem key={group.id} value={group.id}>
                                     {group.name}
                                   </SelectItem>
@@ -454,7 +484,7 @@ const BatchPage: React.FC = () => {
             </div>
           </div>
 
-          {isLoading ? (
+          {loading ? (
             <div className="flex items-center justify-center py-20">
               <Loader className="h-8 w-8 animate-spin" />
               <p className="ml-2">Loading batches...</p>
@@ -541,12 +571,12 @@ const BatchPage: React.FC = () => {
             </div>
           )}
 
-          {batches?.spyderBatches?.pagination && (
+          {pagination && (
             <div className="sticky bottom-0 left-0 right-0 bg-white dark:bg-gray-900 border-t p-4 shadow-lg">
               <div className="max-w-7xl mx-auto flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-gray-600">
-                    Page {currentPage} of {batches.spyderBatches.pagination.totalPages}
+                    Page {currentPage} of {pagination.totalPages}
                   </span>
                   <Input
                     type="text"
@@ -584,7 +614,7 @@ const BatchPage: React.FC = () => {
                     variant="outline"
                     size="sm"
                     onClick={() => handlePageChange(currentPage + 1)}
-                    disabled={currentPage >= batches.spyderBatches.pagination.totalPages}
+                    disabled={currentPage >= pagination.totalPages}
                   >
                     Next
                   </Button>
@@ -603,7 +633,7 @@ const BatchPage: React.FC = () => {
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
-              {configs?.spyderConfigs.items.map((config) => (
+              {configs.map((config) => (
                 <Button
                   key={config.id}
                   variant="outline"
