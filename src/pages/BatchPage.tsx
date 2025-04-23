@@ -11,24 +11,14 @@ import { useForm } from 'react-hook-form';
 import { toast } from 'sonner';
 import * as z from 'zod';
 import { useAppDispatch, useAppSelector } from '@/store';
-import { batchApi, configApi, countryApi, groupApi, SpyderBatch, CreateSpyderBatchInput } from '@/services/api';
+import { batchApi, SpyderBatch, CreateSpyderBatchInput } from '@/services/api';
 import {
   setBatches,
   setLoading,
   setError,
   addBatch,
-  updateBatch,
   deleteBatch,
 } from '@/store/slices/batchSlice';
-import {
-  setConfigs,
-} from '@/store/slices/configSlice';
-import {
-  setCountries,
-} from '@/store/slices/countrySlice';
-import {
-  setGroups,
-} from '@/store/slices/groupSlice';
 import { usePagination } from '@/hooks/usePagination';
 
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
@@ -82,29 +72,6 @@ type BatchFormValues = {
   status: string;
 };
 
-const formatTimestamp = (timestamp: string | number) => {
-  try {
-    const date = new Date(Number(timestamp));
-    if (isNaN(date.getTime())) {
-      return '';
-    }
-    return date.toISOString().slice(0, 16);
-  } catch (error) {
-    return '';
-  }
-};
-
-const parseDateInput = (value: string) => {
-  try {
-    const date = new Date(value);
-    if (isNaN(date.getTime())) {
-      return null;
-    }
-    return date.getTime().toString();
-  } catch (error) {
-    return null;
-  }
-};
 
 const batchFormSchema = z.object({
   countryId: z.string().min(1, "Country is required"),
@@ -147,15 +114,11 @@ const formatDisplayDate = (timestamp: string | number) => {
 
 const BatchPage: React.FC = () => {
   const dispatch = useAppDispatch();
-  const { batches, loading, error, pagination } = useAppSelector((state) => state.batch);
+  const { batches, loading, pagination } = useAppSelector((state) => state.batch);
   const { configs } = useAppSelector((state) => state.config);
-  const { countries } = useAppSelector((state) => state.country);
-  const { groups } = useAppSelector((state) => state.group);
   const [selectedStatus, setSelectedStatus] = useState<SpyderBatch['status'] | 'all'>('all');
-  const [expandedBatchId, setExpandedBatchId] = useState<string | null>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const { currentPage, pageSize, handlePageChange, handlePageSizeChange, pageInput, handlePageInputChange, handlePageInputSubmit } = usePagination();
-  const [selectedConfig, setSelectedConfig] = useState<string | null>(null);
   const [isConfigDialogOpen, setIsConfigDialogOpen] = useState(false);
   const [selectedBatchId, setSelectedBatchId] = useState<string | null>(null);
 
@@ -163,13 +126,9 @@ const BatchPage: React.FC = () => {
     const fetchData = async () => {
       try {
         dispatch(setLoading(true));
-        const [batchesData, countriesData, groupsData, configsData] = await Promise.all([
+        const [batchesData] = await Promise.all([
           batchApi.getBatches({ pagination: { page: currentPage, pageSize } }),
-          countryApi.getCountries(1, 20),
-          groupApi.getGroups(1, 20),
-          configApi.getConfigs(1, 100),
         ]);
-
         dispatch(setBatches({
           items: batchesData.spyderBatches.items,
           pagination: {
@@ -179,9 +138,6 @@ const BatchPage: React.FC = () => {
             totalItems: batchesData.spyderBatches.pagination.total || 0,
           },
         }));
-        // dispatch(setCountries(countriesData.countries.items));
-        // dispatch(setGroups(groupsData.spyedGroups.items));
-        // dispatch(setConfigs(configsData.spyderConfigs.items));
       } catch (error) {
         dispatch(setError('Failed to fetch data'));
         toast.error('Failed to fetch data');
@@ -375,9 +331,9 @@ const BatchPage: React.FC = () => {
                                 </SelectTrigger>
                               </FormControl>
                               <SelectContent>
-                                {countries.map((country) => (
-                                  <SelectItem key={country.id} value={country.id}>
-                                    {country.name}
+                                {filteredBatches?.map((batch) => (
+                                  <SelectItem key={batch.batchCountry?.id} value={batch.batchCountry?.id}>
+                                    {batch.batchCountry?.name}
                                   </SelectItem>
                                 ))}
                               </SelectContent>
@@ -399,9 +355,9 @@ const BatchPage: React.FC = () => {
                                 </SelectTrigger>
                               </FormControl>
                               <SelectContent>
-                                {groups.map((group) => (
-                                  <SelectItem key={group.id} value={group.id}>
-                                    {group.name}
+                                {filteredBatches.map((batch) => (
+                                  <SelectItem key={batch.associatedGroup?.id} value={batch.associatedGroup?.id}>
+                                    {batch.associatedGroup?.name}
                                   </SelectItem>
                                 ))}
                               </SelectContent>

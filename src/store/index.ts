@@ -1,5 +1,7 @@
 import { configureStore } from '@reduxjs/toolkit';
 import { TypedUseSelectorHook, useDispatch, useSelector } from 'react-redux';
+
+import adReducer from './slices/adSlice';
 import batchReducer from './slices/batchSlice';
 import configReducer from './slices/configSlice';
 import countryReducer from './slices/countrySlice';
@@ -7,6 +9,7 @@ import groupReducer from './slices/groupSlice';
 
 export const store = configureStore({
   reducer: {
+    ad: adReducer,
     batch: batchReducer,
     config: configReducer,
     country: countryReducer,

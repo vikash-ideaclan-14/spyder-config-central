@@ -62,6 +62,14 @@ export interface Batch extends BaseEntity {
   completedTasks: number;
 }
 
+
+export interface AdsResponse  {
+  ads: {
+    items: Ad[];
+    pagination: PaginationInfo;
+  };
+}
+
 export interface Ad extends BaseEntity {
   title: string;
   body: string;
@@ -235,7 +243,7 @@ export const adApi = {
       });
       return response.data;
     } catch (error) {
-      toast.error('Failed to fetch ads');
+      toast.error(error.message);
       throw error;
     }
   }
@@ -314,7 +322,7 @@ export const configApi = {
       });   
       return response.data.spyderConfig;
     } catch (error) {
-      toast.error('Failed to fetch configuration');
+      toast.error(error.message);
       throw error;
     }
   },
@@ -347,7 +355,7 @@ export const configApi = {
       }
       throw new Error('Failed to create configuration');
     } catch (error) {
-      toast.error('Failed to create configuration');
+      toast.error(error.message);
       throw error;
     }
   },
@@ -380,7 +388,7 @@ export const configApi = {
       }
       throw new Error('Failed to update configuration');
     } catch (error) {
-      toast.error('Failed to update configuration');
+      toast.error(error.message);
       throw error;
     }
   },
@@ -402,7 +410,7 @@ export const configApi = {
         throw new Error('Failed to delete configuration');
       }
     } catch (error) {
-      toast.error('Failed to delete configuration');
+      toast.error(error.message);
       throw error;
     }
   }
@@ -585,7 +593,7 @@ export const batchApi = {
       });
       return response.data;
     } catch (error) {
-      toast.error('Failed to fetch batches');
+      toast.error(error.message);
       throw error;
     }
   },
@@ -698,7 +706,7 @@ export const batchApi = {
       });
       return response.data.createSpyderBatch;
     } catch (error) {
-      toast.error('Failed to create batch');
+      toast.error(error.message);
       throw error;
     }
   },
@@ -716,7 +724,7 @@ export const batchApi = {
       });
       return response.data.deleteSpyderBatch;
     } catch (error) {
-      toast.error('Failed to delete batch');
+      toast.error(error.message);
       throw error;
     }
   },
@@ -735,7 +743,7 @@ export const batchApi = {
       return data.scrapeAdsByBatch;
     } catch (error) {
       console.error('Scrape ads error:', error);
-      toast.error('Failed to scrape ads for batch');
+      toast.error(error.message);
       throw error;
     }
   },
@@ -944,7 +952,7 @@ export const countryApi = {
       });
       return response.data;
     } catch (error) {
-      toast.error('Failed to fetch countries');
+      toast.error(error.message);
       throw error;
     }
   }
@@ -1039,7 +1047,7 @@ export const companyApi = {
       });
       return response.data;
     } catch (error) {
-      toast.error('Failed to fetch companies');
+      toast.error(error.message);
       throw error;
     }
   },
@@ -1097,7 +1105,7 @@ export const vendorApi = {
       });
       return response.data;
     } catch (error) {
-      toast.error('Failed to fetch vendors');
+      toast.error(error.message);
       throw error;
     }
   },
@@ -1258,7 +1266,7 @@ export const groupApi = {
       });
       return data;
     } catch (error) {
-      toast.error('Failed to fetch groups');
+      toast.error(error.message);
       throw error;
     }
   },
@@ -1271,7 +1279,7 @@ export const groupApi = {
       });
       return data;
     } catch (error) {
-      toast.error('Failed to create group');
+      toast.error(error.message);
       throw error;
     }
   },
@@ -1284,7 +1292,7 @@ export const groupApi = {
       });
       return data;
     } catch (error) {
-      toast.error('Failed to update group');
+      toast.error(error.message);
       throw error;
     }
   },
@@ -1297,7 +1305,7 @@ export const groupApi = {
       });
       return data.deleteSpyedGroup;
     } catch (error) {
-      toast.error('Failed to delete group');
+      toast.error(error.message);
       throw error;
     }
   },
@@ -1425,7 +1433,7 @@ export const landerApi = {
       });
       return data;
     } catch (error) {
-      toast.error('Failed to fetch landers');
+      toast.error(error.message);
       throw error;
     }
   },
@@ -1438,7 +1446,7 @@ export const landerApi = {
       });
       return data.createLander;
     } catch (error) {
-      toast.error('Failed to create lander');
+      toast.error(error.message);
       throw error;
     }
   },
@@ -1451,7 +1459,7 @@ export const landerApi = {
       });
       return data.updateLander;
     } catch (error) {
-      toast.error('Failed to update lander');
+      toast.error(error.message);
       throw error;
     }
   },
@@ -1464,7 +1472,7 @@ export const landerApi = {
       });
       return data.deleteLander;
     } catch (error) {
-      toast.error('Failed to delete lander');
+      toast.error(error.message);
       throw error;
     }
   },

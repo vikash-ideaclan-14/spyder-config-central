@@ -1,21 +1,4 @@
-import React, { useEffect, useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
-import { Search, X, Calendar, Plus, Pencil, Trash2, ChevronLeft, ChevronRight } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -27,14 +10,17 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import {
   Form,
   FormControl,
@@ -43,12 +29,8 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { DashboardLayout } from '@/components/layout/DashboardLayout';
-import { configApi, SpyderConfig } from '@/services/api';
-import { formatDate } from '@/lib/utils';
-import { Pagination } from '@/components/ui/pagination';
-import { usePagination } from '@/hooks/usePagination';
-import { toast } from 'sonner';
+import { Input } from '@/components/ui/input';
+import { Loader } from '@/components/ui/loader';
 import {
   Select,
   SelectContent,
@@ -56,11 +38,27 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader } from '@/components/ui/loader';
-import { setBatches, setError } from '@/store/slices/batchSlice';
-import { setLoading } from '@/store/slices/batchSlice';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { usePagination } from '@/hooks/usePagination';
+import { formatDate } from '@/lib/utils';
+import { configApi, SpyderConfig } from '@/services/api';
 import { useAppDispatch, useAppSelector } from '@/store';
-import { createConfig, deleteConfig, deleteConfigById, fetchConfigById, setConfigs, setSelectedConfig, updateConfigById } from '@/store/slices/configSlice';
+import { setError, setLoading } from '@/store/slices/batchSlice';
+import { createConfig, deleteConfigById, setConfigs, setSelectedConfig, updateConfigById } from '@/store/slices/configSlice';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useQuery } from '@tanstack/react-query';
+import { Pencil, Plus, Search, Trash2, X } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { toast } from 'sonner';
+import * as z from 'zod';
 
 const configFormSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
@@ -87,7 +85,7 @@ type FormMode = 'create' | 'edit';
 
 const ConfigPage: React.FC = () => {
   const dispatch = useAppDispatch();
-  const { configs } = useAppSelector((state) => state.config);
+  const { configs, } = useAppSelector((state) => state.config);
   const { selectedConfig } = useAppSelector((state) => state.config);
   const [searchTerm, setSearchTerm] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -112,50 +110,12 @@ const ConfigPage: React.FC = () => {
 
   const { currentPage, pageSize, handlePageChange, handlePageSizeChange } = usePagination();
 
-  const queryClient = useQueryClient();
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['configs', currentPage, pageSize],
     queryFn: () => configApi.getConfigs(currentPage, pageSize),
   });
 
-  const createMutation = useMutation({
-    mutationFn: (values: ConfigFormValues) => configApi.createConfig(values),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['configs'] });
-      setIsDialogOpen(false);
-      form.reset();
-      toast.success('Config created successfully');
-    },
-    onError: (error) => {
-      toast.error('Failed to create config');
-    }
-  });
-
-  const updateMutation = useMutation({
-    mutationFn: ({ id, input }: { id: string; input: ConfigFormValues }) =>
-      configApi.updateConfig(id, input),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['configs'] });
-      setIsDialogOpen(false);
-      toast.success('Config updated successfully');
-    },
-    onError: (error) => {
-      toast.error('Failed to update config');
-    }
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: (id: string) => configApi.deleteConfig(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['configs'] });
-      setIsDeleteDialogOpen(false);
-      toast.success('Config deleted successfully');
-    },
-    onError: (error) => {
-      toast.error('Failed to delete config');
-    }
-  });
 
   // Clear validation warnings after 5 seconds
   const clearValidationWarnings = () => {

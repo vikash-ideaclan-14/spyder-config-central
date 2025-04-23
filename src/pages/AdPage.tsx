@@ -33,9 +33,12 @@ import {
 import React, { useEffect, useRef, useState } from 'react';
 import { toast } from 'react-hot-toast';
 import { queryClient } from '@/lib/queryClient';
+import { setAds } from '@/store/slices/adSlice';
+import { useDispatch } from 'react-redux';
+import { useAppSelector } from '@/store';
 
 interface VideoState {
-  isPlaying: boolean;               
+  isPlaying: boolean;
   isMuted: boolean;
   currentTime: number;
   duration: number;
@@ -70,14 +73,13 @@ const AdStatusBadge = ({ status }: { status: string }) => {
 };
 
 export default function AdPage() {
+  const dispatch = useDispatch();
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedAd, setSelectedAd] = useState<Ad | null>(null);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const { adsData } = useAppSelector((state) => state.ad);
   const [isImageFullscreen, setIsImageFullscreen] = useState(false);
   const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
   const [videoStates, setVideoStates] = useState<Record<string, VideoState>>({});
   const videoRefs = useRef<Record<string, HTMLVideoElement | null>>({});
-  
   // Add filter states
   const [filters, setFilters] = useState({
     batchId: null,
@@ -94,42 +96,16 @@ export default function AdPage() {
 
   const { currentPage, pageSize, handlePageChange, handlePageSizeChange, pageInput, handlePageInputChange, handlePageInputSubmit } = usePagination();
 
-  const { data, isLoading, error } = useQuery({
-    queryKey: ['ads', currentPage, pageSize, filters],
-    queryFn: () => adApi.getAds({
-      pagination: { page: currentPage, pageSize },
-      filters
-    }),
-    placeholderData: (previousData) => previousData,
-    staleTime: 5000,
-  });
-
-  // const deleteMutation = useMutation({
-  //   mutationFn: (id: string) => adApi.deleteAd(id),
-  //   onSuccess: async (data) => {
-  //     await queryClient.invalidateQueries({ queryKey: ['ads'] });
-  //     await queryClient.refetchQueries({ queryKey: ['ads'] });
-  //     toast.success('Ad deleted successfully');
-  //   },
-  //   onError: (error) => {
-  //     toast.error('Failed to delete ad');
-  //   }
-  // });
-
-  // const updateMutation = useMutation({
-  //   mutationFn: ({ id, input }: { id: string; input: AdFormValues }) => 
-  //     adApi.updateAd(id, input),
-  //   onSuccess: async (data) => {
-  //     await queryClient.invalidateQueries({ queryKey: ['ads'] });
-  //     await queryClient.refetchQueries({ queryKey: ['ads'] });
-  //     setIsEditDialogOpen(false);
-  //     setSelectedAd(null);
-  //     toast.success('Ad updated successfully');
-  //   },
-  //   onError: (error) => {
-  //     toast.error('Failed to update ad');
-  //   }
-  // });
+  useEffect(() => {
+    const fetchAds = async () => {
+      const response = await adApi.getAds({ 
+        pagination: { page: currentPage, pageSize }, 
+        filters 
+      });
+      dispatch(setAds(response));
+    };
+    fetchAds();
+  }, [currentPage, pageSize, filters, dispatch]);
 
   // Cleanup video refs on unmount
   useEffect(() => {
@@ -241,20 +217,13 @@ export default function AdPage() {
     { value: 'vendorName', label: 'Vendor Name' }
   ];
 
-  const filteredAds = data?.ads.items.filter(ad => 
+  const filteredAds = adsData?.ads?.items?.filter(ad =>
     ad.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
     ad.body.toLowerCase().includes(searchTerm.toLowerCase()) ||
     ad.vendor.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     ad.batches.some(batch => batch.id.toLowerCase().includes(searchTerm.toLowerCase()))
   ) || [];
 
-  if (isLoading) return (
-    <DashboardLayout>
-      <Loader className="min-h-[calc(100vh-4rem)]" size="lg" />
-    </DashboardLayout>
-  );
-  if (error) return <div>Error loading ads</div>;
-  
   return (
     <DashboardLayout>
       <div className="space-y-4">
@@ -342,7 +311,6 @@ export default function AdPage() {
         </div>
 
         <div className="relative">
-          {isLoading && <Loader className="absolute inset-0 bg-white/50 dark:bg-gray-900/50 backdrop-blur-sm z-10" size="md" />}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {filteredAds.map((ad) => (
               <Card key={ad.id} className="overflow-hidden group">
@@ -358,7 +326,7 @@ export default function AdPage() {
                           setIsImageFullscreen(true);
                         }}
                       />
-                      <div 
+                      <div
                         className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-between cursor-pointer"
                         onClick={() => {
                           setFullscreenImage(ad.original_image_url);
@@ -478,14 +446,14 @@ export default function AdPage() {
                           >
                             {videoStates[ad.id]?.isMuted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
                           </button>
-                          <div 
+                          <div
                             className="flex-1 h-1 bg-gray-600 rounded-full overflow-hidden cursor-pointer"
                             onClick={(e) => handleVideoSeek(ad.id, e)}
                           >
-                            <div 
+                            <div
                               className="progress-bar h-full bg-white transition-all duration-100"
-                              style={{ 
-                                width: `${(videoStates[ad.id]?.currentTime || 0) / (videoStates[ad.id]?.duration || 1) * 100}%` 
+                              style={{
+                                width: `${(videoStates[ad.id]?.currentTime || 0) / (videoStates[ad.id]?.duration || 1) * 100}%`
                               }}
                             />
                           </div>
@@ -511,9 +479,9 @@ export default function AdPage() {
                   </div>
                   <div className="flex items-center justify-between text-xs">
                     <span className="text-muted-foreground">Link:</span>
-                    <a 
-                      href={ad.link_url} 
-                      target="_blank" 
+                    <a
+                      href={ad.link_url}
+                      target="_blank"
                       rel="noopener noreferrer"
                       className="text-blue-600 hover:underline truncate max-w-[200px]"
                       title={ad.link_url}
@@ -529,7 +497,7 @@ export default function AdPage() {
 
         {/* Fullscreen Image View */}
         {isImageFullscreen && fullscreenImage && (
-          <div 
+          <div
             className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center"
             onClick={() => setIsImageFullscreen(false)}
           >
@@ -551,12 +519,12 @@ export default function AdPage() {
           </div>
         )}
 
-        {data?.ads.pagination && (
+        {adsData?.ads?.pagination && (
           <div className="sticky bottom-0 left-0 right-0 bg-white dark:bg-gray-900 border-t p-4 shadow-lg">
             <div className="max-w-7xl mx-auto flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <span className="text-sm text-gray-600">
-                  Page {currentPage} of {data.ads.pagination.totalPages}
+                  Page {currentPage} of {adsData.ads.pagination.totalPages}
                 </span>
                 <Input
                   type="text"
@@ -594,7 +562,7 @@ export default function AdPage() {
                   variant="outline"
                   size="sm"
                   onClick={() => handlePageChange(currentPage + 1)}
-                  disabled={currentPage === data.ads.pagination.totalPages}
+                  disabled={currentPage === adsData.ads.pagination.totalPages}
                 >
                   Next
                 </Button>
