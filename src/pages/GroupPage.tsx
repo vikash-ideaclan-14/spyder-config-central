@@ -1,19 +1,3 @@
-import React, { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { toast } from 'sonner';
-import { 
-  ChevronRight, 
-  ChevronLeft,
-  Plus, 
-  SearchX,
-  Loader,
-  CloudCog,
-  Pencil,
-  Trash2
-} from 'lucide-react';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { useForm } from 'react-hook-form';
-import * as z from 'zod';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -25,24 +9,31 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  Loader,
+  Pencil,
+  Plus,
+  SearchX,
+  Trash2
+} from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { toast } from 'sonner';
+import * as z from 'zod';
 
+import { DashboardLayout } from '@/components/layout/DashboardLayout';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
+  CardContent
 } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { usePagination } from '@/hooks/usePagination';
-import { formatDate } from '@/lib/utils';
-import { groupApi, companyApi, vendorApi, SpyderGroup, domainApi } from '@/services/api';
 import {
   Table,
   TableBody,
@@ -51,7 +42,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Pagination } from "@/components/ui/pagination";
+import { usePagination } from '@/hooks/usePagination';
+import { formatDate } from '@/lib/utils';
+import { SpyderGroup, companyApi, domainApi, groupApi, vendorApi } from '@/services/api';
+import { useAppDispatch, useAppSelector } from '@/store';
+import { setError, setLoading } from '@/store/slices/configSlice';
+import { createGroupData, setGroups, updateGroupData } from '@/store/slices/groupSlice';
 
 type GroupFormValues = {
   name: string;
@@ -70,6 +66,8 @@ const groupFormSchema = z.object({
 });
 
 const SpyderGroupPage: React.FC = () => {
+  const dispatch = useAppDispatch();
+  const { groupsData, loading, error } = useAppSelector((state) => state.group);
   const [searchTerm, setSearchTerm] = useState('');
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -77,14 +75,6 @@ const SpyderGroupPage: React.FC = () => {
   const queryClient = useQueryClient();
   const { currentPage, pageSize, handlePageChange, handlePageSizeChange, pageInput, handlePageInputChange, handlePageInputSubmit } = usePagination();
 
-  const { data, isLoading } = useQuery({
-    queryKey: ['groups', currentPage, pageSize],
-    queryFn: () => groupApi.getGroups(currentPage, pageSize),
-    refetchOnWindowFocus: true,
-    refetchOnMount: true,
-    staleTime: 0,
-    gcTime: 0,
-  });
 
   const { data: companies } = useQuery({
     queryKey: ['companies'],
@@ -165,9 +155,29 @@ const SpyderGroupPage: React.FC = () => {
 
   const onSubmit = async (values: GroupFormValues) => {
     if (selectedGroup) {
-      editMutation.mutate(values);
+      dispatch(setLoading(true));
+      dispatch(updateGroupData({
+        name: values.name,
+        status: values.status,
+        companyIds: values.companyIds,
+        vendorIds: values.vendorIds,
+        domainIds: values.domainIds
+      }));
+      dispatch(setLoading(false));
+      setIsEditDialogOpen(false);
     } else {
-      createMutation.mutate(values);
+      dispatch(setLoading(true));
+      dispatch(createGroupData(values));
+      dispatch(setLoading(false));
+      setIsCreateDialogOpen(false);
+      toast.success('Group created successfully');
+      form.reset({
+        name: "",
+        status: "ACTIVE",
+        companyIds: [],
+        vendorIds: [],
+        domainIds: []
+      });
     }
   };
 
@@ -187,13 +197,34 @@ const SpyderGroupPage: React.FC = () => {
     setIsEditDialogOpen(true);
   };
 
-  const filteredGroups = data?.spyedGroups.items.filter(group => 
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        dispatch(setLoading(true));
+        const [groupsData] = await Promise.all([
+          groupApi.getGroups(1, 100),
+        ]);
+        dispatch(setGroups(groupsData));
+      } catch (error) {
+        dispatch(setError('Failed to fetch data'));
+        toast.error('Failed to fetch data');
+      } finally {
+        dispatch(setLoading(false));
+      }
+    };
+
+    fetchData();
+  }, [currentPage, pageSize, dispatch]);
+
+
+  const filteredGroups = groupsData?.spyedGroups.items.filter(group =>
     group.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     group.company?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     group.vendor?.name.toLowerCase().includes(searchTerm.toLowerCase())
   ) || [];
 
-  if (isLoading) {
+  if (loading) {
     return (
       <DashboardLayout>
         <div className="flex items-center justify-center min-h-[calc(100vh-4rem)]">
@@ -214,7 +245,7 @@ const SpyderGroupPage: React.FC = () => {
                 Manage and monitor spyder groups
               </p>
             </div>
-            
+
             <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
               <DialogTrigger asChild>
                 <Button>
@@ -400,7 +431,7 @@ const SpyderGroupPage: React.FC = () => {
             />
           </div>
 
-          {isLoading ? (
+          {loading ? (
             <div className="flex items-center justify-center py-20">
               <Loader className="h-8 w-8 animate-spin" />
               <p className="ml-2">Loading groups...</p>
@@ -466,8 +497,8 @@ const SpyderGroupPage: React.FC = () => {
                             </Button>
                             <AlertDialog>
                               <AlertDialogTrigger asChild>
-                                <Button 
-                                  variant="ghost" 
+                                <Button
+                                  variant="ghost"
                                   size="icon"
                                   className="text-red-600 hover:text-red-700 hover:bg-red-50"
                                 >
@@ -500,12 +531,12 @@ const SpyderGroupPage: React.FC = () => {
                 </Table>
               </div>
 
-              {data?.spyedGroups?.pagination && (
+              {groupsData?.spyedGroups?.pagination && (
                 <div className="sticky bottom-0 left-0 right-0 bg-white dark:bg-gray-900 border rounded-md p-4 shadow-lg mt-6">
                   <div className="max-w-7xl mx-auto flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <span className="text-sm text-gray-600">
-                        Page {currentPage} of {data.spyedGroups.pagination.totalPages}
+                        Page {currentPage} of {groupsData.spyedGroups.pagination.totalPages}
                       </span>
                       <Input
                         type="text"
@@ -543,7 +574,7 @@ const SpyderGroupPage: React.FC = () => {
                         variant="outline"
                         size="sm"
                         onClick={() => handlePageChange(currentPage + 1)}
-                        disabled={currentPage >= data.spyedGroups.pagination.totalPages}
+                        disabled={currentPage >= groupsData.spyedGroups.pagination.totalPages}
                       >
                         Next
                       </Button>

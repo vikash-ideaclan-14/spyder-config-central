@@ -959,11 +959,11 @@ export const countryApi = {
 };
 
 export interface SpyderGroup {
-  id: string;
+  id?: string;
   name: string;
   status: string;
-  createdAt: string;
-  updatedAt: string;
+  createdAt?: string;
+  updatedAt?: string;
   vendor: Vendor;
   company: Company;
   domains: Domain[];
@@ -1004,6 +1004,16 @@ export interface CreateSpyedGroupInput {
   vendorIds: string[];
   domainIds: string[];
 }
+
+export interface UpdateSpyedGroupInput {
+  id: string;
+  name: string;
+  status: string;
+  companyIds: string[];
+  vendorIds: string[];  
+  domainIds: string[];
+}
+
 
 export interface CreateSpyedGroupResponse {
   createSpyedGroup: SpyderGroup;
